@@ -1,27 +1,3 @@
-// GLFWOculusRiftTest
-// (c) cThrough 2014 (Daniel Dekkers)
-// Version 2014052305 Based on OculusSDK 3.0.2 Preview
-// Windows, Linux and OSX
-
-// #include <GL/glew.h>
-// #if defined(_WIN32)
-// #include <Windows.h>
-// #define GLFW_EXPOSE_NATIVE_WIN32
-// #define GLFW_EXPOSE_NATIVE_WGL
-// #elif defined(__linux__)
-// #include <X11/X.h>
-// #include <X11/extensions/Xrandr.h>
-// #define GLFW_EXPOSE_NATIVE_X11
-// #define GLFW_EXPOSE_NATIVE_GLX
-// #endif
-// #include <GLFW/glfw3.h>
-// #if !defined(__APPLE__)
-// #include <GLFW/glfw3native.h>
-// #endif
-// #include <OVR.h>
-// #include <OVR_CAPI.h>
-// #include <OVR_CAPI_GL.h>
-
 #include <GL/glew.h>
 #include <X11/X.h>
 #include <X11/extensions/Xrandr.h>
@@ -39,11 +15,8 @@
 
 #include <iostream>
 
-using namespace std;
-
 const bool l_FullScreen = false;
 const bool l_MultiSampling = false;
-const bool l_Spin = false;
 
 ovrHmd l_Hmd;
 ovrHmdDesc l_HmdDesc;
@@ -119,50 +92,49 @@ GLuint l_VAIndici[] =
 
 float wand_trans[3];
 float scale = 1.0f;
-// ===========================================================================
+
 
 void VRPN_CALLBACK handle_tracker(void* userData, const vrpn_TRACKERCB t)
 {
-    // cout << "Tracker '" << t.sensor << "' : " << t.pos[0] << "," <<  t.pos[1] << "," << t.pos[2] << endl;
-
     wand_trans[0] = (float) t.pos[0] * scale;
     wand_trans[1] = (float) t.pos[1] * scale;
     wand_trans[2] = (float) t.pos[2] * scale;
 
-    cout << wand_trans[0] << "," <<  wand_trans[1] << "," << wand_trans[2] << endl;
+    std::cout << wand_trans[0] << "," <<  \
+        wand_trans[1] << "," << \
+        wand_trans[2] << std::endl;
 }
-
-
-// =============================================================================
 
 static void ErrorCallback(int p_Error, const char* p_Description)
 {
     fputs(p_Description, stderr);
 }
 
-// =============================================================================
-
-static void KeyCallback(GLFWwindow* p_Window, int p_Key, int p_Scancode, int p_Action, int p_Mods)
+static void KeyCallback(GLFWwindow* p_Window, 
+        int p_Key, int p_Scancode, int p_Action, int p_Mods)
 {
     if (p_Key == GLFW_KEY_ESCAPE && p_Action == GLFW_PRESS) 
         glfwSetWindowShouldClose(p_Window, GL_TRUE);
 }
-
-// =============================================================================
 
 static void WindowSizeCallback(GLFWwindow* p_Window, int p_Width, int p_Height)
 {
     l_Cfg.OGL.Header.RTSize.w = p_Width; 
     l_Cfg.OGL.Header.RTSize.h = p_Height;
 
-    int l_DistortionCaps = ovrDistortionCap_Chromatic | ovrDistortionCap_TimeWarp;
-    ovrHmd_ConfigureRendering(l_Hmd, &l_Cfg.Config, l_DistortionCaps, l_EyeFov, l_EyeRenderDesc);
+    int l_DistortionCaps 
+        = ovrDistortionCap_Chromatic | ovrDistortionCap_TimeWarp;
+
+    ovrHmd_ConfigureRendering(l_Hmd, 
+            &l_Cfg.Config, 
+            l_DistortionCaps, 
+            l_EyeFov, 
+            l_EyeRenderDesc);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
 }
-
-// ============================================================================
 
 void RenderCubeVertexArrays(void)
 {
@@ -177,52 +149,6 @@ void RenderCubeVertexArrays(void)
     glDisableClientState(GL_NORMAL_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
 }
-
-// ============================================================================
-
-void RenderCubeFixedFunction(void)
-{
-    // Obsolete, remains as a fall back for the vertex arrays version...
-    glBegin(GL_QUADS);
-    glNormal3f( 0.0f, 0.0f, 1.0f);
-    glVertex3f( 0.5f, 0.5f, 0.5f);
-    glVertex3f(-0.5f, 0.5f, 0.5f);
-    glVertex3f(-0.5f,-0.5f, 0.5f);
-    glVertex3f( 0.5f,-0.5f, 0.5f);
-
-    glNormal3f( 0.0f, 0.0f,-1.0f);
-    glVertex3f(-0.5f,-0.5f,-0.5f);
-    glVertex3f(-0.5f, 0.5f,-0.5f);
-    glVertex3f( 0.5f, 0.5f,-0.5f);
-    glVertex3f( 0.5f,-0.5f,-0.5f);
-
-    glNormal3f( 0.0f, 1.0f, 0.0f);
-    glVertex3f( 0.5f, 0.5f, 0.5f);
-    glVertex3f( 0.5f, 0.5f,-0.5f);
-    glVertex3f(-0.5f, 0.5f,-0.5f);
-    glVertex3f(-0.5f, 0.5f, 0.5f);
-
-    glNormal3f( 0.0f,-1.0f, 0.0f);
-    glVertex3f(-0.5f,-0.5f,-0.5f);
-    glVertex3f( 0.5f,-0.5f,-0.5f);
-    glVertex3f( 0.5f,-0.5f, 0.5f);
-    glVertex3f(-0.5f,-0.5f, 0.5f);
-
-    glNormal3f( 1.0f, 0.0f, 0.0f);
-    glVertex3f( 0.5f, 0.5f, 0.5f);
-    glVertex3f( 0.5f,-0.5f, 0.5f);
-    glVertex3f( 0.5f,-0.5f,-0.5f);
-    glVertex3f( 0.5f, 0.5f,-0.5f);
-
-    glNormal3f(-1.0f, 0.0f, 0.0f);
-    glVertex3f(-0.5f,-0.5f,-0.5f);
-    glVertex3f(-0.5f,-0.5f, 0.5f);
-    glVertex3f(-0.5f, 0.5f, 0.5f);
-    glVertex3f(-0.5f, 0.5f,-0.5f);
-    glEnd();
-}
-
-// ============================================================================
 
 static void SetOpenGLState(void)
 {
@@ -256,50 +182,62 @@ static void SetOpenGLState(void)
     glMaterialfv(GL_FRONT, GL_SHININESS, l_MaterialShininess);
 }
 
-// =============================================================================
-
 int main(void)
 {
     // Initialize VRPN
-	vrpn_Tracker_Remote* vrpnTracker = new vrpn_Tracker_Remote( "Oculus@158.130.62.126:3883");
-	vrpnTracker->register_change_handler( 0, handle_tracker );
+    vrpn_Tracker_Remote* vrpnTracker = 
+        new vrpn_Tracker_Remote( "Oculus@158.130.62.126:3883");
+
+    vrpnTracker->register_change_handler( 0, handle_tracker );
 
     // Initialize LibOVR...
     ovr_Initialize();
-
     l_Hmd = ovrHmd_Create(0);
-    if (!l_Hmd) l_Hmd = ovrHmd_CreateDebug(ovrHmd_DK1);
+    if (!l_Hmd) 
+        l_Hmd = ovrHmd_CreateDebug(ovrHmd_DK1);
 
     ovrHmd_GetDesc(l_Hmd, &l_HmdDesc);
 
     // Start the sensor which provides the Rift’s pose and motion.
-    ovrHmd_StartSensor(l_Hmd, ovrSensorCap_Orientation | ovrSensorCap_YawCorrection | ovrSensorCap_Position, ovrSensorCap_Orientation);
+    ovrHmd_StartSensor(l_Hmd, 
+            ovrSensorCap_Orientation | 
+            ovrSensorCap_YawCorrection | 
+            ovrSensorCap_Position, 
+            ovrSensorCap_Orientation);
 
 
     GLFWwindow* l_Window;
     glfwSetErrorCallback(ErrorCallback);
 
-    if (!glfwInit()) exit(EXIT_FAILURE);
+    if (!glfwInit()) 
+        exit(EXIT_FAILURE);
 
-    if (l_MultiSampling) glfwWindowHint(GLFW_SAMPLES, 4); else glfwWindowHint(GLFW_SAMPLES, 0);
+    if (l_MultiSampling) 
+        glfwWindowHint(GLFW_SAMPLES, 4); 
+    else 
+        glfwWindowHint(GLFW_SAMPLES, 0);
 
     ovrSizei l_ClientSize;
-    if (l_FullScreen)
-    {
+    if (l_FullScreen) {
         l_ClientSize.w = l_HmdDesc.Resolution.w; // 1280 for DK1...
         l_ClientSize.h = l_HmdDesc.Resolution.h; // 800 for DK1...
         // Create a fullscreen window with the Oculus Rift resolution...
-        l_Window = glfwCreateWindow(l_ClientSize.w, l_ClientSize.h, "GLFW Oculus Rift Test", glfwGetPrimaryMonitor(), NULL);
-    }
-    else
-    {
+        l_Window = glfwCreateWindow(l_ClientSize.w, 
+                l_ClientSize.h, 
+                "GLFW Oculus Rift Test", 
+                glfwGetPrimaryMonitor(), 
+                NULL);
+    } else {
         l_ClientSize.w = 640;
         l_ClientSize.h = 480;
-        l_Window = glfwCreateWindow(l_ClientSize.w, l_ClientSize.h, "GLFW Oculus Rift Test", NULL, NULL);
+        l_Window = glfwCreateWindow(l_ClientSize.w, 
+                l_ClientSize.h, 
+                "GLFW Oculus Rift Test", 
+                NULL, 
+                NULL);
     }
 
-    if (!l_Window)
-    {
+    if (!l_Window) {
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
@@ -310,8 +248,7 @@ int main(void)
     // Don't forget to initialize Glew, turn glewExperimental on to avoid problem fetching function pointers...
     glewExperimental = GL_TRUE;
     GLenum l_Result = glewInit();
-    if (l_Result!=GLEW_OK)   
-    {
+    if (l_Result!=GLEW_OK) {
         printf("glewInit() error.\n");
         exit(EXIT_FAILURE);
     }
@@ -321,9 +258,13 @@ int main(void)
     int l_Minor = glfwGetWindowAttrib(l_Window, GLFW_CONTEXT_VERSION_MINOR);
     int l_Profile = glfwGetWindowAttrib(l_Window, GLFW_OPENGL_PROFILE);
     printf("OpenGL: %d.%d ", l_Major, l_Minor);
-    if (l_Major>=3) // Profiles introduced in OpenGL 3.0...
-    {
-        if (l_Profile==GLFW_OPENGL_COMPAT_PROFILE) printf("GLFW_OPENGL_COMPAT_PROFILE\n"); else printf("GLFW_OPENGL_CORE_PROFILE\n");
+
+    // Profiles introduced in OpenGL 3.0...
+    if (l_Major>=3) {
+        if (l_Profile==GLFW_OPENGL_COMPAT_PROFILE) 
+            printf("GLFW_OPENGL_COMPAT_PROFILE\n"); 
+        else 
+            printf("GLFW_OPENGL_CORE_PROFILE\n");
     }
     printf("Vendor: %s\n", (char*)glGetString(GL_VENDOR));
     printf("Renderer: %s\n", (char*)glGetString(GL_RENDERER));
@@ -332,11 +273,20 @@ int main(void)
     SetOpenGLState();
 
     // We will do some offscreen rendering, setup FBO...
-    ovrSizei l_TextureSizeLeft = ovrHmd_GetFovTextureSize(l_Hmd, ovrEye_Left, l_HmdDesc.DefaultEyeFov[0], 1.0f);
-    ovrSizei l_TextureSizeRight = ovrHmd_GetFovTextureSize(l_Hmd, ovrEye_Right, l_HmdDesc.DefaultEyeFov[1], 1.0f);
+    ovrSizei l_TextureSizeLeft = ovrHmd_GetFovTextureSize(l_Hmd, 
+            ovrEye_Left, 
+            l_HmdDesc.DefaultEyeFov[0], 
+            1.0f);
+
+    ovrSizei l_TextureSizeRight = ovrHmd_GetFovTextureSize(l_Hmd, 
+            ovrEye_Right, 
+            l_HmdDesc.DefaultEyeFov[1], 
+            1.0f);
+
     ovrSizei l_TextureSize;
     l_TextureSize.w = l_TextureSizeLeft.w + l_TextureSizeRight.w;
-    l_TextureSize.h = (l_TextureSizeLeft.h>l_TextureSizeRight.h ? l_TextureSizeLeft.h : l_TextureSizeRight.h);
+    l_TextureSize.h = (l_TextureSizeLeft.h > l_TextureSizeRight.h \
+            ? l_TextureSizeLeft.h : l_TextureSizeRight.h);
 
     // Create FBO...
     GLuint l_FBOId;
@@ -349,7 +299,16 @@ int main(void)
     // "Bind" the newly created texture : all future texture functions will modify this texture...
     glBindTexture(GL_TEXTURE_2D, l_TextureId);
     // Give an empty image to OpenGL (the last "0")
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, l_TextureSize.w, l_TextureSize.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    glTexImage2D(GL_TEXTURE_2D, 
+            0, 
+            GL_RGBA, 
+            l_TextureSize.w, 
+            l_TextureSize.h, 
+            0, 
+            GL_RGBA, 
+            GL_UNSIGNED_BYTE, 
+            0);
+
     // Linear filtering...
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -358,8 +317,15 @@ int main(void)
     GLuint l_DepthBufferId;
     glGenRenderbuffers(1, &l_DepthBufferId);
     glBindRenderbuffer(GL_RENDERBUFFER, l_DepthBufferId);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, l_TextureSize.w, l_TextureSize.h);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, l_DepthBufferId);
+    glRenderbufferStorage(GL_RENDERBUFFER, 
+            GL_DEPTH_COMPONENT, 
+            l_TextureSize.w, 
+            l_TextureSize.h);
+
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, 
+            GL_DEPTH_ATTACHMENT, 
+            GL_RENDERBUFFER, 
+            l_DepthBufferId);
 
     // Set the texture as our colour attachment #0...
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, l_TextureId, 0);
@@ -370,8 +336,7 @@ int main(void)
 
     // Check if everything is OK...
     GLenum l_Check = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
-    if (l_Check!=GL_FRAMEBUFFER_COMPLETE)
-    {
+    if (l_Check!=GL_FRAMEBUFFER_COMPLETE) {
         printf("There is a problem with the FBO.\n");
         exit(EXIT_FAILURE);
     }
@@ -389,12 +354,9 @@ int main(void)
     l_Cfg.OGL.Header.Multisample = (l_MultiSampling ? 1 : 0);
     l_Cfg.OGL.Header.RTSize.w = l_ClientSize.w;
     l_Cfg.OGL.Header.RTSize.h = l_ClientSize.h;
-#if defined(_WIN32)
-    l_Cfg.OGL.Window = glfwGetWin32Window(l_Window);
-#elif defined(__linux__)
+
     l_Cfg.OGL.Win = glfwGetX11Window(l_Window);
     l_Cfg.OGL.Disp = glfwGetX11Display();
-#endif
 
     int l_DistortionCaps = ovrDistortionCap_Chromatic | ovrDistortionCap_TimeWarp;
     ovrHmd_ConfigureRendering(l_Hmd, &l_Cfg.Config, l_DistortionCaps, l_EyeFov, l_EyeRenderDesc);
@@ -419,24 +381,11 @@ int main(void)
     glfwSetKeyCallback(l_Window, KeyCallback);
     glfwSetWindowSizeCallback(l_Window, WindowSizeCallback);
 
-    GLfloat l_SpinX;
-    GLfloat l_SpinY;
-
     while (!glfwWindowShouldClose(l_Window))
     {
         // spin
         vrpnTracker->mainloop();
 
-        if (l_Spin)
-        {
-            l_SpinX = (GLfloat) fmod(glfwGetTime()*17.0, 360.0);
-            l_SpinY = (GLfloat) fmod(glfwGetTime()*23.0, 360.0);
-        }
-        else
-        {
-            l_SpinX = 30.0f;
-            l_SpinY = 40.0f;
-        }
 
         ovrFrameTiming m_HmdFrameTiming = ovrHmd_BeginFrame(l_Hmd, 0);
 
@@ -475,20 +424,14 @@ int main(void)
                     l_EyeRenderDesc[l_Eye].ViewAdjust.z);
             // Multiply with orientation retrieved from sensor...
             glMultMatrixf(&(l_ModelViewMatrix.Transposed().M[0][0]));
+
             // Move back a bit to show scene in front of us...
             glTranslatef(0.0f, 0.0f, -2.0f);
 
-            // Move with the wand
-            
+            // Integrate position data from OptiTrack
             glTranslatef(wand_trans[0], wand_trans[1], wand_trans[2]);
 
-
-            // Make the cube spin...
-            glRotatef(l_SpinX, 1.0f, 0.0f, 0.0f);
-            glRotatef(l_SpinY, 0.0f, 1.0f, 0.0f);
-
             // Render...
-            // RenderCubeFixedFunction();
             RenderCubeVertexArrays();
 
             ovrHmd_EndEyeRender(l_Hmd, l_Eye, l_EyePose, &l_EyeTexture[l_Eye].Texture);
