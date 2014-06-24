@@ -118,15 +118,16 @@ GLuint l_VAIndici[] =
 };
 
 float wand_trans[3];
+float scale = 1.0f;
 // ===========================================================================
 
 void VRPN_CALLBACK handle_tracker(void* userData, const vrpn_TRACKERCB t)
 {
     // cout << "Tracker '" << t.sensor << "' : " << t.pos[0] << "," <<  t.pos[1] << "," << t.pos[2] << endl;
 
-    wand_trans[0] = (float) t.pos[0];
-    wand_trans[1] = (float) t.pos[1];
-    wand_trans[2] = (float) t.pos[2];
+    wand_trans[0] = (float) t.pos[0] * scale;
+    wand_trans[1] = (float) t.pos[1] * scale;
+    wand_trans[2] = (float) t.pos[2] * scale;
 
     cout << wand_trans[0] << "," <<  wand_trans[1] << "," << wand_trans[2] << endl;
 }
@@ -260,7 +261,7 @@ static void SetOpenGLState(void)
 int main(void)
 {
     // Initialize VRPN
-	vrpn_Tracker_Remote* vrpnTracker = new vrpn_Tracker_Remote( "Wand@158.130.62.126:3883");
+	vrpn_Tracker_Remote* vrpnTracker = new vrpn_Tracker_Remote( "Oculus@158.130.62.126:3883");
 	vrpnTracker->register_change_handler( 0, handle_tracker );
 
     // Initialize LibOVR...
