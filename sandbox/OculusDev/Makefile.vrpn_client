@@ -1,0 +1,21 @@
+VRPNPATH = ../vrpn
+
+OBJPATH = ./obj
+BINPATH = ./bin
+SRCPATH = ./src
+
+DEPS = $(VRPNPATH)/vrpn_Tracker.h \
+	   $(VRPNPATH)/vrpn_Analog.h \
+	   $(VRPNPATH)/vrpn_Button.h
+
+LIBS = -L$(VRPNPATH)/pc_linux64 -lvrpn -lpthread
+
+$(BINPATH)/vrpn_client: $(OBJPATH)/vrpn_client.o
+	g++ -Wall -o $(BINPATH)/vrpn_client $(OBJPATH)/vrpn_client.o $(LIBS)
+
+$(OBJPATH)/vrpn_client.o: $(SRCPATH)/vrpn_client.cpp $(DEPS)
+	g++ -Wall -c -o $(OBJPATH)/vrpn_client.o $(SRCPATH)/vrpn_client.cpp
+
+clean:
+	rm -f $(OBJPATH)/*
+	rm -f $(BINPATH)/*
