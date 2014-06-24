@@ -39,7 +39,7 @@ LIBS = -L$(VRPNPATH)/pc_linux64 \
 TARGET = $(BINPATH)/MarkOneOGL
 
 $(TARGET): $(OBJPATH)/MarkOneOGL.o $(OBJPATH)/objloader.o
-	g++ -Wall -o $(TARGET) $(OBJPATH)/MarkOneOGL.o $(LIBS)
+	g++ -Wall -o $(TARGET) $(OBJPATH)/MarkOneOGL.o $(OBJPATH)/objloader.o $(LIBS)
 
 $(OBJPATH)/MarkOneOGL.o: $(SRCPATH)/MarkOneOGL.cpp
 	g++ -Wall -c $(INCPATH) -o $(OBJPATH)/MarkOneOGL.o $(SRCPATH)/MarkOneOGL.cpp

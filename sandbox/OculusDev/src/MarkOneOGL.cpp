@@ -3,15 +3,16 @@
 #include <X11/extensions/Xrandr.h>
 #define GLFW_EXPOSE_NATIVE_X11
 #define GLFW_EXPOSE_NATIVE_GLX
-#include "../../glfw-3.0.4/include/GLFW/glfw3.h"
-#include "../../glfw-3.0.4/include/GLFW/glfw3native.h"
-#include "../../LibOVR/Include/OVR.h"
-#include "../../LibOVR/Src/OVR_CAPI.h"
-#include "../../LibOVR/Src/OVR_CAPI_GL.h"
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 
-#include "../../vrpn/vrpn_Tracker.h"
-#include "../../vrpn/vrpn_Button.h"
-#include "../../vrpn/vrpn_Analog.h"
+#include <OVR.h>
+#include <OVR_CAPI.h>
+#include <OVR_CAPI_GL.h>
+
+#include <vrpn_Tracker.h>
+#include <vrpn_Button.h>
+#include <vrpn_Analog.h>
 
 #include <iostream>
 
@@ -26,75 +27,12 @@ ovrFovPort l_EyeFov[2];
 ovrGLConfig l_Cfg;
 ovrEyeRenderDesc l_EyeRenderDesc[2];
 
-GLfloat l_VAPoints[] =
-{ 
-    0.5f, 0.5f, 0.5f,
-    -0.5f, 0.5f, 0.5f,
-    -0.5f,-0.5f, 0.5f,
-    0.5f,-0.5f, 0.5f,
-    -0.5f,-0.5f,-0.5f,
-    -0.5f, 0.5f,-0.5f,
-    0.5f, 0.5f,-0.5f,
-    0.5f,-0.5f,-0.5f,
-    0.5f, 0.5f, 0.5f,
-    0.5f, 0.5f,-0.5f,
-    -0.5f, 0.5f,-0.5f,
-    -0.5f, 0.5f, 0.5f,
-    -0.5f,-0.5f,-0.5f,
-    0.5f,-0.5f,-0.5f,
-    0.5f,-0.5f, 0.5f,
-    -0.5f,-0.5f, 0.5f,
-    0.5f, 0.5f, 0.5f,
-    0.5f,-0.5f, 0.5f,
-    0.5f,-0.5f,-0.5f,
-    0.5f, 0.5f,-0.5f,
-    -0.5f,-0.5f,-0.5f,
-    -0.5f,-0.5f, 0.5f,
-    -0.5f, 0.5f, 0.5f,
-    -0.5f, 0.5f,-0.5f
-};
-
-GLfloat l_VANormals[] =
-{
-    0.0f, 0.0f, 1.0f,
-    0.0f, 0.0f, 1.0f,
-    0.0f, 0.0f, 1.0f,
-    0.0f, 0.0f, 1.0f,
-    0.0f, 0.0f,-1.0f,
-    0.0f, 0.0f,-1.0f,
-    0.0f, 0.0f,-1.0f,
-    0.0f, 0.0f,-1.0f,
-    0.0f, 1.0f, 0.0f,
-    0.0f, 1.0f, 0.0f,
-    0.0f, 1.0f, 0.0f,
-    0.0f, 1.0f, 0.0f,
-    0.0f,-1.0f, 0.0f,
-    0.0f,-1.0f, 0.0f,
-    0.0f,-1.0f, 0.0f,
-    0.0f,-1.0f, 0.0f,
-    1.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f,
-    -1.0f, 0.0f, 0.0f,
-    -1.0f, 0.0f, 0.0f,
-    -1.0f, 0.0f, 0.0f,
-    -1.0f, 0.0f, 0.0f
-};
-
-GLuint l_VAIndici[] =
-{
-    0, 1, 2, 3,
-    4, 5, 6, 7,
-    8, 9, 10, 11,
-    12, 13, 14, 15,
-    16, 17, 18, 19,
-    20, 21, 22, 23
-};
+std::vector<glm::vec3> vertices;
+std::vector<glm::vec2> uvs;
+std::vector<glm::vec3> normals;
 
 float wand_trans[3];
 float scale = 1.0f;
-
 
 void VRPN_CALLBACK handle_tracker(void* userData, const vrpn_TRACKERCB t)
 {
@@ -138,15 +76,16 @@ static void WindowSizeCallback(GLFWwindow* p_Window, int p_Width, int p_Height)
     glUseProgram(0);
 }
 
-void RenderCubeVertexArrays(void)
+void RenderVertexArrays(void)
 {
     glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 0, l_VAPoints);
+    glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
 
     glEnableClientState(GL_NORMAL_ARRAY);
-    glNormalPointer(GL_FLOAT, 0, l_VANormals);
+    glNormalPointer(GL_FLOAT, 0, &normals[0]);
 
-    glDrawElements(GL_QUADS, 6*4, GL_UNSIGNED_INT, l_VAIndici);
+    // glDrawElements(GL_QUADS, 6*4, GL_UNSIGNED_INT, l_VAIndici);
+    glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 
     glDisableClientState(GL_NORMAL_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
@@ -297,6 +236,12 @@ int main(void)
     glGenFramebuffers(1, &l_FBOId);
     glBindFramebuffer(GL_FRAMEBUFFER, l_FBOId);
 
+
+
+    bool res = loadOBJ("../assets/suzanne.obj", vertices, uvs, normals);
+
+
+
     // The texture we're going to render to...
     GLuint l_TextureId;
     glGenTextures(1, &l_TextureId);
@@ -437,7 +382,7 @@ int main(void)
             glTranslatef(wand_trans[0], wand_trans[1], wand_trans[2]);
 
             // Render...
-            RenderCubeVertexArrays();
+            RenderVertexArrays();
 
             ovrHmd_EndEyeRender(l_Hmd, l_Eye, l_EyePose, &l_EyeTexture[l_Eye].Texture);
         }
