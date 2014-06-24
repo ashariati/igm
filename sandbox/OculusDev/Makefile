@@ -2,21 +2,20 @@ VRPNPATH = ../vrpn
 LIBOVRPATH = ../LibOVR
 GLFWPATH = ../glfw-3.0.4
 GLEWPATH = ../glew-1.10.0
+GLMPATH = ../glm
 
-INCPATH = -I/usr/include
+INCPATH = -I./include \
+		  -I/usr/include \
+		  -I$(GLMPATH) \
+		  -I$(GLEWPATH)/include \
+		  -I$(GLFWPATH)/include \
+		  -I$(LIBOVRPATH)/Include \
+		  -I$(LIBOVRPATH)/Src \
+		  -I$(VRPNPATH)
+
 OBJPATH = ./obj
 BINPATH = ./bin
 SRCPATH = ./src
-
-DEPS = $(VRPNPATH)/vrpn_Tracker.h \
-	   $(VRPNPATH)/vrpn_Analog.h \
-	   $(VRPNPATH)/vrpn_Button.h \
-	   $(LIBOVRPATH)/Include/OVR.h \
-	   $(LIBOVRPATH)/Src/OVR_CAPI.h \
-	   $(LIBOVRPATH)/Src/OVR_CAPI_GL.h \
-	   $(GLFWPATH)/include/GLFW/glfw3.h \
-	   $(GLFWPATH)/include/GLFW/glfw3native.h \
-	   $(GLEWPATH)/include/GL/glew.h
 
 LIBS = -L$(VRPNPATH)/pc_linux64 \
 	   -L$(LIBOVRPATH)/Lib/Linux/Release/x86_64 \
@@ -39,11 +38,14 @@ LIBS = -L$(VRPNPATH)/pc_linux64 \
 
 TARGET = $(BINPATH)/MarkOneOGL
 
-$(TARGET): $(OBJPATH)/MarkOneOGL.o
+$(TARGET): $(OBJPATH)/MarkOneOGL.o $(OBJPATH)/objloader.o
 	g++ -Wall -o $(TARGET) $(OBJPATH)/MarkOneOGL.o $(LIBS)
 
-$(OBJPATH)/MarkOneOGL.o: $(SRCPATH)/MarkOneOGL.cpp $(DEPS)
-	g++ -Wall -c -o $(OBJPATH)/MarkOneOGL.o $(SRCPATH)/MarkOneOGL.cpp
+$(OBJPATH)/MarkOneOGL.o: $(SRCPATH)/MarkOneOGL.cpp
+	g++ -Wall -c $(INCPATH) -o $(OBJPATH)/MarkOneOGL.o $(SRCPATH)/MarkOneOGL.cpp
+
+$(OBJPATH)/objloader.o: $(SRCPATH)/objloader.cpp
+	g++ -Wall -c $(INCPATH) -o $(OBJPATH)/objloader.o $(SRCPATH)/objloader.cpp
 
 clean:
 	rm -f $(OBJPATH)/*

@@ -15,6 +15,8 @@
 
 #include <iostream>
 
+#include <objloader.hpp>
+
 const bool l_FullScreen = false;
 const bool l_MultiSampling = false;
 
@@ -209,8 +211,10 @@ int main(void)
     GLFWwindow* l_Window;
     glfwSetErrorCallback(ErrorCallback);
 
-    if (!glfwInit()) 
+    if (!glfwInit()) {
+        fprintf(stderr, "Failed to initialize glfw!\n");
         exit(EXIT_FAILURE);
+    }
 
     if (l_MultiSampling) 
         glfwWindowHint(GLFW_SAMPLES, 4); 
@@ -296,7 +300,8 @@ int main(void)
     // The texture we're going to render to...
     GLuint l_TextureId;
     glGenTextures(1, &l_TextureId);
-    // "Bind" the newly created texture : all future texture functions will modify this texture...
+    // "Bind" the newly created texture : 
+    // all future texture functions will modify this texture...
     glBindTexture(GL_TEXTURE_2D, l_TextureId);
     // Give an empty image to OpenGL (the last "0")
     glTexImage2D(GL_TEXTURE_2D, 
