@@ -33,9 +33,17 @@
 #include "../../LibOVR/Src/OVR_CAPI.h"
 #include "../../LibOVR/Src/OVR_CAPI_GL.h"
 
+#include "../../vrpn/vrpn_Tracker.h"
+#include "../../vrpn/vrpn_Button.h"
+#include "../../vrpn/vrpn_Analog.h"
+
+#include <iostream>
+
+using namespace std;
+
 const bool l_FullScreen = false;
 const bool l_MultiSampling = false;
-const bool l_Spin = true;
+const bool l_Spin = false;
 
 ovrHmd l_Hmd;
 ovrHmdDesc l_HmdDesc;
@@ -108,6 +116,21 @@ GLuint l_VAIndici[] =
     16, 17, 18, 19,
     20, 21, 22, 23
 };
+
+float wand_trans[3];
+// ===========================================================================
+
+void VRPN_CALLBACK handle_tracker(void* userData, const vrpn_TRACKERCB t)
+{
+    // cout << "Tracker '" << t.sensor << "' : " << t.pos[0] << "," <<  t.pos[1] << "," << t.pos[2] << endl;
+
+    wand_trans[0] = (float) t.pos[0];
+    wand_trans[1] = (float) t.pos[1];
+    wand_trans[2] = (float) t.pos[2];
+
+    cout << wand_trans[0] << "," <<  wand_trans[1] << "," << wand_trans[2] << endl;
+}
+
 
 // =============================================================================
 
@@ -236,6 +259,10 @@ static void SetOpenGLState(void)
 
 int main(void)
 {
+    // Initialize VRPN
+	vrpn_Tracker_Remote* vrpnTracker = new vrpn_Tracker_Remote( "Wand@158.130.62.126:3883");
+	vrpnTracker->register_change_handler( 0, handle_tracker );
+
     // Initialize LibOVR...
     ovr_Initialize();
 
@@ -247,8 +274,8 @@ int main(void)
     // Start the sensor which provides the Rift’s pose and motion.
     ovrHmd_StartSensor(l_Hmd, ovrSensorCap_Orientation | ovrSensorCap_YawCorrection | ovrSensorCap_Position, ovrSensorCap_Orientation);
 
-    GLFWwindow* l_Window;
 
+    GLFWwindow* l_Window;
     glfwSetErrorCallback(ErrorCallback);
 
     if (!glfwInit()) exit(EXIT_FAILURE);
@@ -396,6 +423,9 @@ int main(void)
 
     while (!glfwWindowShouldClose(l_Window))
     {
+        // spin
+        vrpnTracker->mainloop();
+
         if (l_Spin)
         {
             l_SpinX = (GLfloat) fmod(glfwGetTime()*17.0, 360.0);
@@ -446,6 +476,12 @@ int main(void)
             glMultMatrixf(&(l_ModelViewMatrix.Transposed().M[0][0]));
             // Move back a bit to show scene in front of us...
             glTranslatef(0.0f, 0.0f, -2.0f);
+
+            // Move with the wand
+            
+            glTranslatef(wand_trans[0], wand_trans[1], wand_trans[2]);
+
+
             // Make the cube spin...
             glRotatef(l_SpinX, 1.0f, 0.0f, 0.0f);
             glRotatef(l_SpinY, 0.0f, 1.0f, 0.0f);
