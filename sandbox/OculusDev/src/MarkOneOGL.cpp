@@ -127,16 +127,16 @@ int main(void)
 {
     // Initialize VRPN
     vrpn_Tracker_Remote* vrpnTracker = 
-        new vrpn_Tracker_Remote( "Oculus@158.130.62.126:3883");
+        new vrpn_Tracker_Remote("Oculus@158.130.62.126:3883");
 
-    vrpnTracker->register_change_handler( 0, handle_tracker );
+    // Register position callback 
+    vrpnTracker->register_change_handler(0, handle_tracker);
 
     // Initialize LibOVR...
     ovr_Initialize();
     l_Hmd = ovrHmd_Create(0);
     if (!l_Hmd) 
         l_Hmd = ovrHmd_CreateDebug(ovrHmd_DK1);
-
     ovrHmd_GetDesc(l_Hmd, &l_HmdDesc);
 
     // Start the sensor which provides the Rift’s pose and motion.
@@ -240,8 +240,6 @@ int main(void)
 
     bool res = loadOBJ("../assets/suzanne.obj", vertices, uvs, normals);
 
-
-
     // The texture we're going to render to...
     GLuint l_TextureId;
     glGenTextures(1, &l_TextureId);
@@ -342,7 +340,7 @@ int main(void)
         // Bind the FBO...
         glBindFramebuffer(GL_FRAMEBUFFER, l_FBOId);
         // Clear...
-        glClearColor(0.2f, 0.3f, 0.4f, 1.0f);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         for (int l_EyeIndex=0; l_EyeIndex<ovrEye_Count; l_EyeIndex++)
