@@ -36,16 +36,27 @@ LIBS = -L$(VRPNPATH)/pc_linux64 \
 	   -lpthread \
 	   -ludev
 
+OBJECTS = $(OBJPATH)/MarkOneOGL.o \
+		  $(OBJPATH)/objloader.o \
+		  $(OBJPATH)/texture.o \
+		  $(OBJPATH)/shader.o
+
 TARGET = $(BINPATH)/MarkOneOGL
 
-$(TARGET): $(OBJPATH)/MarkOneOGL.o $(OBJPATH)/objloader.o
-	g++ -Wall -o $(TARGET) $(OBJPATH)/MarkOneOGL.o $(OBJPATH)/objloader.o $(LIBS)
+$(TARGET): $(OBJECTS)
+	g++ -Wall -o $(TARGET) $(OBJECTS) $(LIBS)
 
 $(OBJPATH)/MarkOneOGL.o: $(SRCPATH)/MarkOneOGL.cpp
 	g++ -Wall -c $(INCPATH) -o $(OBJPATH)/MarkOneOGL.o $(SRCPATH)/MarkOneOGL.cpp
 
 $(OBJPATH)/objloader.o: $(SRCPATH)/objloader.cpp
 	g++ -Wall -c $(INCPATH) -o $(OBJPATH)/objloader.o $(SRCPATH)/objloader.cpp
+
+$(OBJPATH)/texture.o: $(SRCPATH)/texture.cpp
+	g++ -Wall -c $(INCPATH) -o $(OBJPATH)/texture.o $(SRCPATH)/texture.cpp
+
+$(OBJPATH)/shader.o: $(SRCPATH)/shader.cpp
+	g++ -Wall -c $(INCPATH) -o $(OBJPATH)/shader.o $(SRCPATH)/shader.cpp
 
 clean:
 	rm -f $(OBJPATH)/*
