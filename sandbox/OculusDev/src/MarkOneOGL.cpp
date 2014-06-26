@@ -17,9 +17,16 @@
 #include <iostream>
 
 #include <objloader.hpp>
+#include <texture.hpp>
+#include <shader.hpp>
 
-const bool l_FullScreen = false;
-const bool l_MultiSampling = false;
+// Use to load .obj in the future
+// #include <assimp/Importer.hpp>
+
+// Use to load .DDS
+// #include <SOIL.h>
+
+GLFWwindow* window;
 
 ovrHmd l_Hmd;
 ovrHmdDesc l_HmdDesc;
@@ -31,6 +38,7 @@ std::vector<glm::vec3> vertices;
 std::vector<glm::vec2> uvs;
 std::vector<glm::vec3> normals;
 
+vrpn_Tracker_Remote* vrpnTracker;
 float wand_trans[3];
 float scale = 1.0f;
 
@@ -43,11 +51,6 @@ void VRPN_CALLBACK handle_tracker(void* userData, const vrpn_TRACKERCB t)
     std::cout << wand_trans[0] << "," <<  \
         wand_trans[1] << "," << \
         wand_trans[2] << std::endl;
-}
-
-static void ErrorCallback(int p_Error, const char* p_Description)
-{
-    fputs(p_Description, stderr);
 }
 
 static void KeyCallback(GLFWwindow* p_Window, 
@@ -101,7 +104,6 @@ static void SetOpenGLState(void)
     glShadeModel(GL_SMOOTH);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    if (l_MultiSampling) glEnable(GL_MULTISAMPLE);
 
     // Some (stationary) lights...
     GLfloat l_Light0Position[] = { 5.0f, 6.0f, 3.0f, 0.0f };
@@ -123,15 +125,14 @@ static void SetOpenGLState(void)
     glMaterialfv(GL_FRONT, GL_SHININESS, l_MaterialShininess);
 }
 
-int main(void)
-{
-    // Initialize VRPN
-    vrpn_Tracker_Remote* vrpnTracker = 
+// Initialize our VRPN toolkit to connect to the Optitrack
+void initVrpn(void) {
+    vrpnTracker = 
         new vrpn_Tracker_Remote("Oculus@158.130.62.126:3883");
-
-    // Register position callback 
     vrpnTracker->register_change_handler(0, handle_tracker);
+}
 
+void initOvr(void) {
     // Initialize LibOVR...
     ovr_Initialize();
     l_Hmd = ovrHmd_Create(0);
@@ -145,48 +146,36 @@ int main(void)
             ovrSensorCap_YawCorrection | 
             ovrSensorCap_Position, 
             ovrSensorCap_Orientation);
+}
 
-
-    GLFWwindow* l_Window;
-    glfwSetErrorCallback(ErrorCallback);
+int main(void)
+{
+    initVrpn();
+    initOvr();
 
     if (!glfwInit()) {
         fprintf(stderr, "Failed to initialize glfw!\n");
         exit(EXIT_FAILURE);
     }
 
-    if (l_MultiSampling) 
-        glfwWindowHint(GLFW_SAMPLES, 4); 
-    else 
-        glfwWindowHint(GLFW_SAMPLES, 0);
+    ovrSizei client_size;
+    client_size.w = 640;
+    client_size.h = 480;
 
-    ovrSizei l_ClientSize;
-    if (l_FullScreen) {
-        l_ClientSize.w = l_HmdDesc.Resolution.w; // 1280 for DK1...
-        l_ClientSize.h = l_HmdDesc.Resolution.h; // 800 for DK1...
-        // Create a fullscreen window with the Oculus Rift resolution...
-        l_Window = glfwCreateWindow(l_ClientSize.w, 
-                l_ClientSize.h, 
-                "GLFW Oculus Rift Test", 
-                glfwGetPrimaryMonitor(), 
-                NULL);
-    } else {
-        l_ClientSize.w = 640;
-        l_ClientSize.h = 480;
-        l_Window = glfwCreateWindow(l_ClientSize.w, 
-                l_ClientSize.h, 
-                "GLFW Oculus Rift Test", 
-                NULL, 
-                NULL);
-    }
+    window = glfwCreateWindow(client_size.w, 
+            client_size.h, 
+            "GLFW Oculus Rift Test", 
+            NULL, 
+            NULL);
 
-    if (!l_Window) {
+    if (!window) {
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
 
-    // Make the context current for this window...
-    glfwMakeContextCurrent(l_Window);
+    glfwMakeContextCurrent(window);
+
+    /************* GET RID OF THIS JUNK ***********************/
 
     // Don't forget to initialize Glew, turn glewExperimental on to avoid problem fetching function pointers...
     glewExperimental = GL_TRUE;
@@ -197,9 +186,9 @@ int main(void)
     }
 
     // Print some info about the OpenGL context...
-    int l_Major = glfwGetWindowAttrib(l_Window, GLFW_CONTEXT_VERSION_MAJOR);
-    int l_Minor = glfwGetWindowAttrib(l_Window, GLFW_CONTEXT_VERSION_MINOR);
-    int l_Profile = glfwGetWindowAttrib(l_Window, GLFW_OPENGL_PROFILE);
+    int l_Major = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MAJOR);
+    int l_Minor = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MINOR);
+    int l_Profile = glfwGetWindowAttrib(window, GLFW_OPENGL_PROFILE);
     printf("OpenGL: %d.%d ", l_Major, l_Minor);
 
     // Profiles introduced in OpenGL 3.0...
@@ -212,46 +201,75 @@ int main(void)
     printf("Vendor: %s\n", (char*)glGetString(GL_VENDOR));
     printf("Renderer: %s\n", (char*)glGetString(GL_RENDERER));
 
+    /*********************************************************/
+
     // Create some lights, materials, etc...
     SetOpenGLState();
 
     // We will do some offscreen rendering, setup FBO...
-    ovrSizei l_TextureSizeLeft = ovrHmd_GetFovTextureSize(l_Hmd, 
+    ovrSizei texture_size_left = ovrHmd_GetFovTextureSize(l_Hmd, 
             ovrEye_Left, 
             l_HmdDesc.DefaultEyeFov[0], 
             1.0f);
 
-    ovrSizei l_TextureSizeRight = ovrHmd_GetFovTextureSize(l_Hmd, 
+    ovrSizei texture_size_right = ovrHmd_GetFovTextureSize(l_Hmd, 
             ovrEye_Right, 
             l_HmdDesc.DefaultEyeFov[1], 
             1.0f);
 
-    ovrSizei l_TextureSize;
-    l_TextureSize.w = l_TextureSizeLeft.w + l_TextureSizeRight.w;
-    l_TextureSize.h = (l_TextureSizeLeft.h > l_TextureSizeRight.h \
-            ? l_TextureSizeLeft.h : l_TextureSizeRight.h);
+    ovrSizei texture_size;
+    texture_size.w = texture_size_left.w + texture_size_right.w;
+    texture_size.h = (texture_size_left.h > texture_size_right.h \
+            ? texture_size_left.h : texture_size_right.h);
+
+    // Compile Shaders
+    GLuint program_id = LoadShaders("../shaders/StandardShading.vertexshader",
+            "../shaders/StandardShading.fragmentshader");
 
     // Create FBO...
     GLuint l_FBOId;
     glGenFramebuffers(1, &l_FBOId);
     glBindFramebuffer(GL_FRAMEBUFFER, l_FBOId);
 
-
-
+    // Load my textures and objects
     bool res = loadOBJ("../assets/suzanne.obj", vertices, uvs, normals);
 
-    // The texture we're going to render to...
-    GLuint l_TextureId;
-    glGenTextures(1, &l_TextureId);
-    // "Bind" the newly created texture : 
-    // all future texture functions will modify this texture...
-    glBindTexture(GL_TEXTURE_2D, l_TextureId);
+    // GLuint l_TextureId = SOIL_load_OGL_texture(
+    //         "../assets/uvmap.DDS",
+    //         SOIL_LOAD_AUTO,
+    //         SOIL_CREATE_NEW_ID,
+    //         SOIL_FLAG_DDS_LOAD_DIRECT);
+    GLuint l_TextureId = loadDDS("../assets/uvmap.DDS");
+
+    //  glTexStorage2D(GL_TEXTURE_2D,
+    //          1,
+    //          GL_RGBA,
+    //          texture_size.w,
+    //          texture_size.h);
+
+    //  glTexSubImage2D(GL_TEXTURE_2D,
+    //          0,
+    //          0, 0,
+    //          texture_size.w,
+    //          texture_size.h,
+    //          GL_RGBA,
+    //          GL_FLOAT,
+    //          &uvs[0]);
+
+
+    //  // The texture we're going to render to...
+    //  GLuint l_TextureId;
+    //  glGenTextures(1, &l_TextureId);
+    //  // "Bind" the newly created texture : 
+    //  // all future texture functions will modify this texture...
+    //  glBindTexture(GL_TEXTURE_2D, l_TextureId);
+
     // Give an empty image to OpenGL (the last "0")
     glTexImage2D(GL_TEXTURE_2D, 
             0, 
             GL_RGBA, 
-            l_TextureSize.w, 
-            l_TextureSize.h, 
+            texture_size.w, 
+            texture_size.h, 
             0, 
             GL_RGBA, 
             GL_UNSIGNED_BYTE, 
@@ -261,19 +279,24 @@ int main(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
+    printf("%d\n\n", (int) l_TextureId);
+
+
     // Create Depth Buffer...
     GLuint l_DepthBufferId;
     glGenRenderbuffers(1, &l_DepthBufferId);
     glBindRenderbuffer(GL_RENDERBUFFER, l_DepthBufferId);
+
     glRenderbufferStorage(GL_RENDERBUFFER, 
             GL_DEPTH_COMPONENT, 
-            l_TextureSize.w, 
-            l_TextureSize.h);
+            texture_size.w, 
+            texture_size.h);
 
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, 
             GL_DEPTH_ATTACHMENT, 
             GL_RENDERBUFFER, 
             l_DepthBufferId);
+
 
     // Set the texture as our colour attachment #0...
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, l_TextureId, 0);
@@ -299,37 +322,38 @@ int main(void)
     l_EyeFov[1] = l_HmdDesc.DefaultEyeFov[1];
 
     l_Cfg.OGL.Header.API = ovrRenderAPI_OpenGL;
-    l_Cfg.OGL.Header.Multisample = (l_MultiSampling ? 1 : 0);
-    l_Cfg.OGL.Header.RTSize.w = l_ClientSize.w;
-    l_Cfg.OGL.Header.RTSize.h = l_ClientSize.h;
+    l_Cfg.OGL.Header.Multisample = 0;
+    l_Cfg.OGL.Header.RTSize.w = client_size.w;
+    l_Cfg.OGL.Header.RTSize.h = client_size.h;
 
-    l_Cfg.OGL.Win = glfwGetX11Window(l_Window);
+    l_Cfg.OGL.Win = glfwGetX11Window(window);
     l_Cfg.OGL.Disp = glfwGetX11Display();
 
     int l_DistortionCaps = ovrDistortionCap_Chromatic | ovrDistortionCap_TimeWarp;
     ovrHmd_ConfigureRendering(l_Hmd, &l_Cfg.Config, l_DistortionCaps, l_EyeFov, l_EyeRenderDesc);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
     glUseProgram(0);
 
     ovrGLTexture l_EyeTexture[2];
     l_EyeTexture[0].OGL.Header.API = ovrRenderAPI_OpenGL;
-    l_EyeTexture[0].OGL.Header.TextureSize.w = l_TextureSize.w;
-    l_EyeTexture[0].OGL.Header.TextureSize.h = l_TextureSize.h;
+    l_EyeTexture[0].OGL.Header.TextureSize.w = texture_size.w;
+    l_EyeTexture[0].OGL.Header.TextureSize.h = texture_size.h;
     l_EyeTexture[0].OGL.Header.RenderViewport.Pos.x = 0;
     l_EyeTexture[0].OGL.Header.RenderViewport.Pos.y = 0;
-    l_EyeTexture[0].OGL.Header.RenderViewport.Size.w = l_TextureSize.w/2;
-    l_EyeTexture[0].OGL.Header.RenderViewport.Size.h = l_TextureSize.h;
+    l_EyeTexture[0].OGL.Header.RenderViewport.Size.w = texture_size.w/2;
+    l_EyeTexture[0].OGL.Header.RenderViewport.Size.h = texture_size.h;
     l_EyeTexture[0].OGL.TexId = l_TextureId;
 
     // Right eye the same, except for the x-position in the texture...
     l_EyeTexture[1] = l_EyeTexture[0];
-    l_EyeTexture[1].OGL.Header.RenderViewport.Pos.x = (l_TextureSize.w+1)/2;
+    l_EyeTexture[1].OGL.Header.RenderViewport.Pos.x = (texture_size.w+1)/2;
 
-    glfwSetKeyCallback(l_Window, KeyCallback);
-    glfwSetWindowSizeCallback(l_Window, WindowSizeCallback);
+    glfwSetKeyCallback(window, KeyCallback);
+    glfwSetWindowSizeCallback(window, WindowSizeCallback);
 
-    while (!glfwWindowShouldClose(l_Window))
+    while (!glfwWindowShouldClose(window))
     {
         // spin
         vrpnTracker->mainloop();
@@ -339,6 +363,7 @@ int main(void)
 
         // Bind the FBO...
         glBindFramebuffer(GL_FRAMEBUFFER, l_FBOId);
+
         // Clear...
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -397,7 +422,7 @@ int main(void)
         glfwPollEvents();
     }
 
-    glfwDestroyWindow(l_Window);
+    glfwDestroyWindow(window);
 
     glfwTerminate();
 
