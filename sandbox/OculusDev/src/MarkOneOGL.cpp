@@ -42,7 +42,7 @@ vrpn_Tracker_Remote* vrpn_tracker;
 float wand_trans[3];
 float scale = 1.0f;
 
-void VRPN_CALLBACK handle_tracker(void* userData, const vrpn_TRACKERCB t)
+void VRPN_CALLBACK handleTracker(void* userData, const vrpn_TRACKERCB t)
 {
     wand_trans[0] = (float) t.pos[0] * scale;
     wand_trans[1] = (float) t.pos[1] * scale;
@@ -53,14 +53,14 @@ void VRPN_CALLBACK handle_tracker(void* userData, const vrpn_TRACKERCB t)
         wand_trans[2] << std::endl;
 }
 
-static void KeyCallback(GLFWwindow* p_Window, 
+static void keyCallback(GLFWwindow* p_Window, 
         int p_Key, int p_Scancode, int p_Action, int p_Mods)
 {
     if (p_Key == GLFW_KEY_ESCAPE && p_Action == GLFW_PRESS) 
         glfwSetWindowShouldClose(p_Window, GL_TRUE);
 }
 
-static void WindowSizeCallback(GLFWwindow* p_Window, int p_Width, int p_Height)
+static void windowSizeCallback(GLFWwindow* p_Window, int p_Width, int p_Height)
 {
     ovr_gl_config.OGL.Header.RTSize.w = p_Width; 
     ovr_gl_config.OGL.Header.RTSize.h = p_Height;
@@ -79,7 +79,7 @@ static void WindowSizeCallback(GLFWwindow* p_Window, int p_Width, int p_Height)
     glUseProgram(0);
 }
 
-void RenderVertexArrays(void)
+void renderVertexArrays(void)
 {
     glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
@@ -94,7 +94,7 @@ void RenderVertexArrays(void)
     glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-static void SetOpenGLState(void)
+static void setOpenGLState(void)
 {
     // Some state...
     glEnable(GL_CULL_FACE);
@@ -129,7 +129,7 @@ static void SetOpenGLState(void)
 void initVrpn(void) {
     vrpn_tracker = 
         new vrpn_Tracker_Remote("Oculus@158.130.62.126:3883");
-    vrpn_tracker->register_change_handler(0, handle_tracker);
+    vrpn_tracker->register_change_handler(0, handleTracker);
 }
 
 void initOvr(void) {
@@ -204,7 +204,7 @@ int main(void)
     /*********************************************************/
 
     // Create some lights, materials, etc...
-    SetOpenGLState();
+    setOpenGLState();
 
     /* Rendering to a Framebuffer requires a bound texture, so we need
      * to get some of the parameters of the texture from OVR.
@@ -325,8 +325,8 @@ int main(void)
     // No shader programs being used yet...
     glUseProgram(0);
 
-    glfwSetKeyCallback(window, KeyCallback);
-    glfwSetWindowSizeCallback(window, WindowSizeCallback);
+    glfwSetKeyCallback(window, keyCallback);
+    glfwSetWindowSizeCallback(window, windowSizeCallback);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -380,7 +380,7 @@ int main(void)
             glTranslatef(wand_trans[0], wand_trans[1], wand_trans[2]);
 
             // Render...
-            RenderVertexArrays();
+            renderVertexArrays();
 
             ovrHmd_EndEyeRender(hmd, eye, l_EyePose, &eye_texture[eye].Texture);
         }
