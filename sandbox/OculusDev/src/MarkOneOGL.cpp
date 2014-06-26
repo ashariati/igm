@@ -206,63 +206,43 @@ int main(void)
     // Create some lights, materials, etc...
     SetOpenGLState();
 
-    // We will do some offscreen rendering, setup FBO...
+    /* Rendering to a Framebuffer requires a bound texture
+     * which we need to parameterize.
+     */
     ovrSizei texture_size_left = ovrHmd_GetFovTextureSize(l_Hmd, 
             ovrEye_Left, 
             l_HmdDesc.DefaultEyeFov[0], 
             1.0f);
-
     ovrSizei texture_size_right = ovrHmd_GetFovTextureSize(l_Hmd, 
             ovrEye_Right, 
             l_HmdDesc.DefaultEyeFov[1], 
             1.0f);
-
     ovrSizei texture_size;
     texture_size.w = texture_size_left.w + texture_size_right.w;
     texture_size.h = (texture_size_left.h > texture_size_right.h \
             ? texture_size_left.h : texture_size_right.h);
 
-    // Compile Shaders
+
     GLuint program_id = LoadShaders("../shaders/StandardShading.vertexshader",
             "../shaders/StandardShading.fragmentshader");
 
-    // Create FBO...
-    GLuint l_FBOId;
-    glGenFramebuffers(1, &l_FBOId);
-    glBindFramebuffer(GL_FRAMEBUFFER, l_FBOId);
-
-    // Load my textures and objects
     bool res = loadOBJ("../assets/suzanne.obj", vertices, uvs, normals);
 
-    // GLuint l_TextureId = SOIL_load_OGL_texture(
-    //         "../assets/uvmap.DDS",
-    //         SOIL_LOAD_AUTO,
-    //         SOIL_CREATE_NEW_ID,
-    //         SOIL_FLAG_DDS_LOAD_DIRECT);
-    GLuint l_TextureId = loadDDS("../assets/uvmap.DDS");
 
-    //  glTexStorage2D(GL_TEXTURE_2D,
-    //          1,
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    // The texture we're going to render to...
+    GLuint texture_id;
+    glGenTextures(1, &texture_id);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+
+    //  glTexStorage2D(GL_TEXTURE_2D, 
+    //          0,
     //          GL_RGBA,
     //          texture_size.w,
     //          texture_size.h);
-
-    //  glTexSubImage2D(GL_TEXTURE_2D,
-    //          0,
-    //          0, 0,
-    //          texture_size.w,
-    //          texture_size.h,
-    //          GL_RGBA,
-    //          GL_FLOAT,
-    //          &uvs[0]);
-
-
-    //  // The texture we're going to render to...
-    //  GLuint l_TextureId;
-    //  glGenTextures(1, &l_TextureId);
-    //  // "Bind" the newly created texture : 
-    //  // all future texture functions will modify this texture...
-    //  glBindTexture(GL_TEXTURE_2D, l_TextureId);
 
     // Give an empty image to OpenGL (the last "0")
     glTexImage2D(GL_TEXTURE_2D, 
@@ -278,8 +258,6 @@ int main(void)
     // Linear filtering...
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-    printf("%d\n\n", (int) l_TextureId);
 
 
     // Create Depth Buffer...
@@ -299,7 +277,7 @@ int main(void)
 
 
     // Set the texture as our colour attachment #0...
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, l_TextureId, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture_id, 0);
 
     // Set the list of draw buffers...
     GLenum l_GLDrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
@@ -344,7 +322,7 @@ int main(void)
     l_EyeTexture[0].OGL.Header.RenderViewport.Pos.y = 0;
     l_EyeTexture[0].OGL.Header.RenderViewport.Size.w = texture_size.w/2;
     l_EyeTexture[0].OGL.Header.RenderViewport.Size.h = texture_size.h;
-    l_EyeTexture[0].OGL.TexId = l_TextureId;
+    l_EyeTexture[0].OGL.TexId = texture_id;
 
     // Right eye the same, except for the x-position in the texture...
     l_EyeTexture[1] = l_EyeTexture[0];
@@ -362,7 +340,7 @@ int main(void)
         ovrFrameTiming m_HmdFrameTiming = ovrHmd_BeginFrame(l_Hmd, 0);
 
         // Bind the FBO...
-        glBindFramebuffer(GL_FRAMEBUFFER, l_FBOId);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
         // Clear...
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
