@@ -77,6 +77,7 @@ static void windowSizeCallback(GLFWwindow* p_Window, int p_Width, int p_Height)
     glUseProgram(0);
 }
 
+
 static void setOpenGLState(void)
 {
     // Some state...
@@ -171,10 +172,13 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
+    // There is some more old gross code in here that needs to be removed
     // Create some lights, materials, etc...
     setOpenGLState();
 
-    /* Rendering to a framebuffer requires a bound texture, so we need
+
+    /* 
+     * Rendering to a framebuffer requires a bound texture, so we need
      * to get some of the parameters of the texture from OVR.
      */
     ovrSizei texture_size_left = ovrHmd_GetFovTextureSize(hmd, 
@@ -221,13 +225,11 @@ int main(void)
             texture_size.w, 
             texture_size.h);
 
-    // Attach color buffer
     glFramebufferTexture(GL_FRAMEBUFFER, 
             GL_COLOR_ATTACHMENT0, 
             color_texture_id, 
             0);
 
-    // Attach depth buffer
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, 
             GL_DEPTH_ATTACHMENT, 
             GL_RENDERBUFFER, 
@@ -242,11 +244,14 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    // Unbind the offscreen framebuffer by binding to the default framebuffer
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+
+    /*
+     * Some oculus configurations
+     */
 
     eye_fov[0] = hmd_desc.DefaultEyeFov[0];
     eye_fov[1] = hmd_desc.DefaultEyeFov[1];
@@ -276,7 +281,6 @@ int main(void)
     eye_texture[0].OGL.Header.RenderViewport.Size.w = texture_size.w/2;
     eye_texture[0].OGL.Header.RenderViewport.Size.h = texture_size.h;
     eye_texture[0].OGL.TexId = color_texture_id;
-
     // Right eye the same, except for the x-position in the texture...
     eye_texture[1] = eye_texture[0];
     eye_texture[1].OGL.Header.RenderViewport.Pos.x = (texture_size.w+1)/2;
@@ -301,12 +305,8 @@ int main(void)
             GL_STATIC_DRAW);
 
 
-    // No shader programs being used yet...
-    //      glUseProgram(0);
-    //      glUseProgram(program_id);
 
     GLuint mvp_id = glGetUniformLocation(program_id, "MVP");
-
 
     //      glfwSetWindowSizeCallback(window, windowSizeCallback);
 
@@ -365,26 +365,24 @@ int main(void)
             //      glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp[0][0]);
 
 
+            // Gross old stuff, we want what is just above to work
             // Pass matrici on to OpenGL...
             glMatrixMode(GL_PROJECTION);
             glLoadIdentity();
             glMultMatrixf(&(projection_matrix.Transposed().M[0][0]));
             glMatrixMode(GL_MODELVIEW);
             glLoadIdentity();
-
             // Translate for specific eye based on IPD...
             glTranslatef(eye_render_desc[eye].ViewAdjust.x,
                     eye_render_desc[eye].ViewAdjust.y,
                     eye_render_desc[eye].ViewAdjust.z);
-
             // Multiply with orientation retrieved from sensor...
             glMultMatrixf(&(model_matrix.Transposed().M[0][0]));
-
             // Move back a bit to show scene in front of us...
             glTranslatef(0.0f, 0.0f, -2.0f);
-
             // Integrate position data from OptiTrack
             glTranslatef(wand_trans[0], wand_trans[1], wand_trans[2]);
+
 
 
             // Render...
@@ -397,13 +395,11 @@ int main(void)
             ovrHmd_EndEyeRender(hmd, eye, eye_pose, &eye_texture[eye].Texture);
         }
 
-        // Unbind the FBO, back to normal drawing...
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         ovrHmd_EndFrame(hmd);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
-
 
         glfwPollEvents();
     }
