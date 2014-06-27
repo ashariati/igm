@@ -288,9 +288,6 @@ int main(void)
 
     bool res = loadOBJ("../assets/suzanne.obj", vertices, uvs, normals);
 
-    // We should now bind our own VAOs...
-    //      glBindBuffer(GL_ARRAY_BUFFER, 0);
-
     GLuint vertex_array_id;
     glGenVertexArrays(1, &vertex_array_id);
     glBindVertexArray(vertex_array_id);
@@ -305,19 +302,22 @@ int main(void)
 
 
     // No shader programs being used yet...
-    glUseProgram(0);
+    //      glUseProgram(0);
     //      glUseProgram(program_id);
 
     GLuint mvp_id = glGetUniformLocation(program_id, "MVP");
 
 
-    glfwSetWindowSizeCallback(window, windowSizeCallback);
+    //      glfwSetWindowSizeCallback(window, windowSizeCallback);
 
     while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && \
             !glfwWindowShouldClose(window))
     {
         vrpn_tracker->mainloop();
         ovrFrameTiming m_HmdFrameTiming = ovrHmd_BeginFrame(hmd, 0);
+
+        glUseProgram(0);
+        //      glUseProgram(program_id);
 
 
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -365,8 +365,6 @@ int main(void)
             //      glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp[0][0]);
 
 
-
-
             // Pass matrici on to OpenGL...
             glMatrixMode(GL_PROJECTION);
             glLoadIdentity();
@@ -388,8 +386,8 @@ int main(void)
             // Integrate position data from OptiTrack
             glTranslatef(wand_trans[0], wand_trans[1], wand_trans[2]);
 
+
             // Render...
-            
             glEnableVertexAttribArray(0);
             glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
@@ -406,13 +404,11 @@ int main(void)
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        glUseProgram(0);
-        //      glUseProgram(program_id);
 
         glfwPollEvents();
     }
 
-    //      glDeleteBuffers(1, &vertex_buffer);
+    glDeleteBuffers(1, &vertex_buffer);
     glDeleteProgram(program_id);
 
     glfwDestroyWindow(window);
