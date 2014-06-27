@@ -316,8 +316,8 @@ int main(void)
         vrpn_tracker->mainloop();
         ovrFrameTiming m_HmdFrameTiming = ovrHmd_BeginFrame(hmd, 0);
 
-        glUseProgram(0);
-        //      glUseProgram(program_id);
+        // glUseProgram(0);
+        glUseProgram(program_id);
 
 
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -348,40 +348,40 @@ int main(void)
             OVR::Matrix4f model_matrix = 
                 OVR::Matrix4f(orientation.Inverted());
 
-            //      // View
-            //      glm::vec3 translation = glm::vec3(
-            //              eye_render_desc[eye].ViewAdjust.x,
-            //              eye_render_desc[eye].ViewAdjust.y,
-            //              eye_render_desc[eye].ViewAdjust.z - 2.0f);
-            //      glm::mat4 view_matrix = glm::translate(glm::mat4(1.f), 
-            //              translation);
-
-            //      // MVP 
-            //      glm::mat4 mvp = fromOVRMatrix4f(projection_matrix) *
-            //          view_matrix *
-            //          fromOVRMatrix4f(model_matrix);
-
-
-            //      glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp[0][0]);
-
-
-            // Gross old stuff, we want what is just above to work
-            // Pass matrici on to OpenGL...
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            glMultMatrixf(&(projection_matrix.Transposed().M[0][0]));
-            glMatrixMode(GL_MODELVIEW);
-            glLoadIdentity();
-            // Translate for specific eye based on IPD...
-            glTranslatef(eye_render_desc[eye].ViewAdjust.x,
+            // View
+            glm::vec3 translation = glm::vec3(
+                    eye_render_desc[eye].ViewAdjust.x,
                     eye_render_desc[eye].ViewAdjust.y,
-                    eye_render_desc[eye].ViewAdjust.z);
-            // Multiply with orientation retrieved from sensor...
-            glMultMatrixf(&(model_matrix.Transposed().M[0][0]));
-            // Move back a bit to show scene in front of us...
-            glTranslatef(0.0f, 0.0f, -2.0f);
-            // Integrate position data from OptiTrack
-            glTranslatef(wand_trans[0], wand_trans[1], wand_trans[2]);
+                    eye_render_desc[eye].ViewAdjust.z - 2.0f);
+            glm::mat4 view_matrix = glm::translate(glm::mat4(1.f), 
+                    translation);
+
+            // MVP 
+            glm::mat4 mvp = fromOVRMatrix4f(projection_matrix) *
+                view_matrix *
+                fromOVRMatrix4f(model_matrix);
+
+
+            glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp[0][0]);
+
+
+            //  // Gross old stuff, we want what is just above to work
+            //  // Pass matrici on to OpenGL...
+            //  glMatrixMode(GL_PROJECTION);
+            //  glLoadIdentity();
+            //  glMultMatrixf(&(projection_matrix.Transposed().M[0][0]));
+            //  glMatrixMode(GL_MODELVIEW);
+            //  glLoadIdentity();
+            //  // Translate for specific eye based on IPD...
+            //  glTranslatef(eye_render_desc[eye].ViewAdjust.x,
+            //          eye_render_desc[eye].ViewAdjust.y,
+            //          eye_render_desc[eye].ViewAdjust.z);
+            //  // Multiply with orientation retrieved from sensor...
+            //  glMultMatrixf(&(model_matrix.Transposed().M[0][0]));
+            //  // Move back a bit to show scene in front of us...
+            //  glTranslatef(0.0f, 0.0f, -2.0f);
+            //  // Integrate position data from OptiTrack
+            //  glTranslatef(wand_trans[0], wand_trans[1], wand_trans[2]);
 
 
 
@@ -389,7 +389,7 @@ int main(void)
             glEnableVertexAttribArray(0);
             glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-            glDrawArrays(GL_LINES, 0, vertices.size());
+            glDrawArrays(GL_TRIANGLES, 0, vertices.size());
             glDisableVertexAttribArray(0);
 
             ovrHmd_EndEyeRender(hmd, eye, eye_pose, &eye_texture[eye].Texture);
