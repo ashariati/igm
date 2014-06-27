@@ -20,6 +20,12 @@
 #include <texture.hpp>
 #include <shader.hpp>
 
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/transform.hpp>
+
 // Use to load .obj in the future
 // #include <assimp/Importer.hpp>
 
@@ -53,13 +59,6 @@ void VRPN_CALLBACK handleTracker(void* userData, const vrpn_TRACKERCB t)
         wand_trans[2] << std::endl;
 }
 
-static void keyCallback(GLFWwindow* p_Window, 
-        int p_Key, int p_Scancode, int p_Action, int p_Mods)
-{
-    if (p_Key == GLFW_KEY_ESCAPE && p_Action == GLFW_PRESS) 
-        glfwSetWindowShouldClose(p_Window, GL_TRUE);
-}
-
 static void windowSizeCallback(GLFWwindow* p_Window, int p_Width, int p_Height)
 {
     ovr_gl_config.OGL.Header.RTSize.w = p_Width; 
@@ -74,24 +73,8 @@ static void windowSizeCallback(GLFWwindow* p_Window, int p_Width, int p_Height)
             eye_fov, 
             eye_render_desc);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
-}
-
-void renderVertexArrays(void)
-{
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
-
-    glEnableClientState(GL_NORMAL_ARRAY);
-    glNormalPointer(GL_FLOAT, 0, &normals[0]);
-
-    // glDrawElements(GL_QUADS, 6*4, GL_UNSIGNED_INT, l_VAIndici);
-    glDrawArrays(GL_TRIANGLES, 0, vertices.size());
-
-    glDisableClientState(GL_NORMAL_ARRAY);
-    glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 static void setOpenGLState(void)
@@ -148,6 +131,12 @@ void initOvr(void) {
             ovrSensorCap_Orientation);
 }
 
+glm::mat4 fromOVRMatrix4f(const OVR::Matrix4f &in) {
+    glm::mat4 out;
+    memcpy(glm::value_ptr(out), &in, sizeof(in));
+    return out;
+}
+
 int main(void)
 {
     initVrpn();
@@ -175,9 +164,6 @@ int main(void)
 
     glfwMakeContextCurrent(window);
 
-    /************* GET RID OF THIS JUNK ***********************/
-
-    // Don't forget to initialize Glew, turn glewExperimental on to avoid problem fetching function pointers...
     glewExperimental = GL_TRUE;
     GLenum l_Result = glewInit();
     if (l_Result!=GLEW_OK) {
@@ -185,28 +171,10 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    // Print some info about the OpenGL context...
-    int l_Major = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MAJOR);
-    int l_Minor = glfwGetWindowAttrib(window, GLFW_CONTEXT_VERSION_MINOR);
-    int l_Profile = glfwGetWindowAttrib(window, GLFW_OPENGL_PROFILE);
-    printf("OpenGL: %d.%d ", l_Major, l_Minor);
-
-    // Profiles introduced in OpenGL 3.0...
-    if (l_Major>=3) {
-        if (l_Profile==GLFW_OPENGL_COMPAT_PROFILE) 
-            printf("GLFW_OPENGL_COMPAT_PROFILE\n"); 
-        else 
-            printf("GLFW_OPENGL_CORE_PROFILE\n");
-    }
-    printf("Vendor: %s\n", (char*)glGetString(GL_VENDOR));
-    printf("Renderer: %s\n", (char*)glGetString(GL_RENDERER));
-
-    /*********************************************************/
-
     // Create some lights, materials, etc...
     setOpenGLState();
 
-    /* Rendering to a Framebuffer requires a bound texture, so we need
+    /* Rendering to a framebuffer requires a bound texture, so we need
      * to get some of the parameters of the texture from OVR.
      */
     ovrSizei texture_size_left = ovrHmd_GetFovTextureSize(hmd, 
@@ -223,14 +191,9 @@ int main(void)
             ? texture_size_left.h : texture_size_right.h);
 
 
-    // To be actually used down the road...
-    GLuint program_id = LoadShaders("../shaders/StandardShading.vertexshader",
-            "../shaders/StandardShading.fragmentshader");
-
-
-    bool res = loadOBJ("../assets/suzanne.obj", vertices, uvs, normals);
-
-
+    /*
+     * Run of the mill framebuffer initialization
+     */
     GLuint fbo;
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -279,7 +242,7 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    // Unbind the ofscreen framebuffer by binding to the default framebuffer
+    // Unbind the offscreen framebuffer by binding to the default framebuffer
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -318,17 +281,40 @@ int main(void)
     eye_texture[1] = eye_texture[0];
     eye_texture[1].OGL.Header.RenderViewport.Pos.x = (texture_size.w+1)/2;
 
+
+
+    GLuint program_id = LoadShaders("../shaders/StandardShading.vertexshader",
+            "../shaders/StandardShading.fragmentshader");
+
+    bool res = loadOBJ("../assets/suzanne.obj", vertices, uvs, normals);
+
     // We should now bind our own VAOs...
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    //      glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    GLuint vertex_array_id;
+    glGenVertexArrays(1, &vertex_array_id);
+    glBindVertexArray(vertex_array_id);
+
+    GLuint vertex_buffer;
+    glGenBuffers(1, &vertex_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER,
+            vertices.size() * sizeof(glm::vec3),
+            &vertices[0],
+            GL_STATIC_DRAW);
+
 
     // No shader programs being used yet...
     glUseProgram(0);
+    //      glUseProgram(program_id);
 
-    glfwSetKeyCallback(window, keyCallback);
+    GLuint mvp_id = glGetUniformLocation(program_id, "MVP");
+
+
     glfwSetWindowSizeCallback(window, windowSizeCallback);
 
-    while (!glfwWindowShouldClose(window))
+    while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && \
+            !glfwWindowShouldClose(window))
     {
         vrpn_tracker->mainloop();
         ovrFrameTiming m_HmdFrameTiming = ovrHmd_BeginFrame(hmd, 0);
@@ -342,7 +328,7 @@ int main(void)
         for (int eye_idx = 0; eye_idx < ovrEye_Count; eye_idx++)
         {
             ovrEyeType eye = hmd_desc.EyeRenderOrder[eye_idx];
-            ovrPosef l_EyePose = ovrHmd_BeginEyeRender(hmd, eye);
+            ovrPosef eye_pose = ovrHmd_BeginEyeRender(hmd, eye);
 
             glViewport(eye_texture[eye].OGL.Header.RenderViewport.Pos.x,
                     eye_texture[eye].OGL.Header.RenderViewport.Pos.y,
@@ -350,15 +336,36 @@ int main(void)
                     eye_texture[eye].OGL.Header.RenderViewport.Size.h
                     );
 
-            // Get Projection and ModelView matrici from the device...
+            // Projection
             OVR::Matrix4f projection_matrix = ovrMatrix4f_Projection(
                     eye_render_desc[eye].Fov, 
                     0.3f, 
                     100.0f, 
                     true);
-            OVR::Quatf orientation = OVR::Quatf(l_EyePose.Orientation);
+            
+            // Model
+            OVR::Quatf orientation = OVR::Quatf(eye_pose.Orientation);
             OVR::Matrix4f model_matrix = 
                 OVR::Matrix4f(orientation.Inverted());
+
+            //      // View
+            //      glm::vec3 translation = glm::vec3(
+            //              eye_render_desc[eye].ViewAdjust.x,
+            //              eye_render_desc[eye].ViewAdjust.y,
+            //              eye_render_desc[eye].ViewAdjust.z - 2.0f);
+            //      glm::mat4 view_matrix = glm::translate(glm::mat4(1.f), 
+            //              translation);
+
+            //      // MVP 
+            //      glm::mat4 mvp = fromOVRMatrix4f(projection_matrix) *
+            //          view_matrix *
+            //          fromOVRMatrix4f(model_matrix);
+
+
+            //      glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp[0][0]);
+
+
+
 
             // Pass matrici on to OpenGL...
             glMatrixMode(GL_PROJECTION);
@@ -366,10 +373,12 @@ int main(void)
             glMultMatrixf(&(projection_matrix.Transposed().M[0][0]));
             glMatrixMode(GL_MODELVIEW);
             glLoadIdentity();
+
             // Translate for specific eye based on IPD...
             glTranslatef(eye_render_desc[eye].ViewAdjust.x,
                     eye_render_desc[eye].ViewAdjust.y,
                     eye_render_desc[eye].ViewAdjust.z);
+
             // Multiply with orientation retrieved from sensor...
             glMultMatrixf(&(model_matrix.Transposed().M[0][0]));
 
@@ -380,9 +389,14 @@ int main(void)
             glTranslatef(wand_trans[0], wand_trans[1], wand_trans[2]);
 
             // Render...
-            renderVertexArrays();
+            
+            glEnableVertexAttribArray(0);
+            glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+            glDrawArrays(GL_LINES, 0, vertices.size());
+            glDisableVertexAttribArray(0);
 
-            ovrHmd_EndEyeRender(hmd, eye, l_EyePose, &eye_texture[eye].Texture);
+            ovrHmd_EndEyeRender(hmd, eye, eye_pose, &eye_texture[eye].Texture);
         }
 
         // Unbind the FBO, back to normal drawing...
@@ -390,15 +404,18 @@ int main(void)
 
         ovrHmd_EndFrame(hmd);
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+
         glUseProgram(0);
+        //      glUseProgram(program_id);
 
         glfwPollEvents();
     }
 
-    glfwDestroyWindow(window);
+    //      glDeleteBuffers(1, &vertex_buffer);
+    glDeleteProgram(program_id);
 
+    glfwDestroyWindow(window);
     glfwTerminate();
 
     ovrHmd_Destroy(hmd);
