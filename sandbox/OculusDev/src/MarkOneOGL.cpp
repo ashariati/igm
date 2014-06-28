@@ -82,44 +82,21 @@ static void windowSizeCallback(GLFWwindow* p_Window, int p_Width, int p_Height)
 
 static void setOpenGLState(void)
 {
-    // Some state...
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_LIGHTING);
-    glDisable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
-    glShadeModel(GL_SMOOTH);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthFunc(GL_LESS);
+    glEnable(GL_CULL_FACE);
 
-    // Some (stationary) lights...
-    GLfloat l_Light0Position[] = { 5.0f, 6.0f, 3.0f, 0.0f };
-    GLfloat l_Light0Diffuse[] = { 1.0f, 0.8f, 0.6f, 1.0f };
-    glLightfv(GL_LIGHT0, GL_POSITION, l_Light0Position);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, l_Light0Diffuse);
-    glEnable(GL_LIGHT0);
-
-    GLfloat l_Light1Position[] = { -5.0f, -6.0f, 5.0f, 0.0f };
-    GLfloat l_Light1Diffuse[] = { 0.6f, 0.8f, 1.0f, 1.0f };
-    glLightfv(GL_LIGHT1, GL_POSITION, l_Light1Position);
-    glLightfv(GL_LIGHT1, GL_DIFFUSE, l_Light1Diffuse);
-    glEnable(GL_LIGHT1);
-
-    // Material...
-    GLfloat l_MaterialSpecular[] = { 0.3f, 0.3f, 0.3f, 1.0f };
-    GLfloat l_MaterialShininess[] = { 10.0f };
-    glMaterialfv(GL_FRONT, GL_SPECULAR, l_MaterialSpecular);
-    glMaterialfv(GL_FRONT, GL_SHININESS, l_MaterialShininess);
 }
 
-// Initialize our VRPN toolkit to connect to the Optitrack
-void initVrpn(void) {
+void initVrpn(void) 
+{
     vrpn_tracker = 
         new vrpn_Tracker_Remote("Oculus@158.130.62.126:3883");
     vrpn_tracker->register_change_handler(0, handleTracker);
 }
 
-void initOvr(void) {
-    // Initialize LibOVR...
+void initOvr(void) 
+{
     ovr_Initialize();
     hmd = ovrHmd_Create(0);
     if (!hmd) 
@@ -134,7 +111,8 @@ void initOvr(void) {
             ovrSensorCap_Orientation);
 }
 
-glm::mat4 fromOVRMatrix4f(const OVR::Matrix4f &in) {
+glm::mat4 fromOVRMatrix4f(const OVR::Matrix4f &in) 
+{
     glm::mat4 out;
     memcpy(glm::value_ptr(out), &in, sizeof(in));
     return out;
@@ -174,10 +152,7 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    // There is some more old gross code in here that needs to be removed
-    // Create some lights, materials, etc...
     setOpenGLState();
-
 
     /* 
      * Rendering to a framebuffer requires a bound texture, so we need
@@ -200,6 +175,7 @@ int main(void)
     /*
      * Run of the mill framebuffer initialization
      */
+
     GLuint fbo;
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -288,6 +264,9 @@ int main(void)
     eye_texture[1].OGL.Header.RenderViewport.Pos.x = (texture_size.w+1)/2;
 
 
+    /*
+     * Compilation of shaders and initialization of buffers
+     */
 
     GLuint program_id = LoadShaders("../shaders/StandardShading.vertexshader",
             "../shaders/StandardShading.fragmentshader");
@@ -306,23 +285,21 @@ int main(void)
             &vertices[0],
             GL_STATIC_DRAW);
 
-
-
     GLuint mvp_id = glGetUniformLocation(program_id, "MVP");
 
-    //      glfwSetWindowSizeCallback(window, windowSizeCallback);
+
+
+    glfwSetWindowSizeCallback(window, windowSizeCallback);
 
     while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && \
             !glfwWindowShouldClose(window))
     {
         vrpn_tracker->mainloop();
+
         ovrFrameTiming m_HmdFrameTiming = ovrHmd_BeginFrame(hmd, 0);
 
-        // glUseProgram(0);
         glUseProgram(program_id);
-
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -353,9 +330,12 @@ int main(void)
                     eye_render_desc[eye].ViewAdjust.z - 2.0f);
             glm::mat4 view_matrix = glm::translate(glm::mat4(1.f), 
                     view);
-
-            //  // Integrate position data from OptiTrack
-            //  glTranslatef(oculus_pos[0], oculus_pos[1], oculus_pos[2]);
+            
+            /*
+             * Integrate the orientation and position of the oculus 
+             * provided by the optitrack system, instead of orientation
+             * results provided by the oculus.
+             */
 
 
             // Model
