@@ -26,39 +26,68 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/transform.hpp>
 
+#include <boost/thread/mutex.hpp>
+
 // Use to load .obj in the future
 // #include <assimp/Importer.hpp>
 
 // Use to load .DDS
 // #include <SOIL.h>
 
-GLFWwindow* window;
 
+// Oculus
 ovrHmd hmd;
 ovrHmdDesc hmd_desc;
 ovrFovPort eye_fov[2];
 ovrGLConfig ovr_gl_config;
 ovrEyeRenderDesc eye_render_desc[2];
 
+// OpenGL
+GLFWwindow* window;
 std::vector<glm::vec3> vertices;
 std::vector<glm::vec2> uvs;
 std::vector<glm::vec3> normals;
 
-vrpn_Tracker_Remote* vrpn_tracker;
-float oculus_pos[3];
+// VRPN
+struct Pose {
+    float x;
+    float y;
+    float z;
+
+    glm::quat orient;
+};
+Pose oculus_pose;
 float scale = 1.0f;
+boost::mutex pose_mutex;
+
+vrpn_Tracker_Remote* oculus_tracker;
+
 
 void VRPN_CALLBACK handleTracker(void* userData, const vrpn_TRACKERCB t)
 {
-    // Access orientation data from t.quat[0..3]
 
-    oculus_pos[0] = (float) t.pos[0] * scale;
-    oculus_pos[1] = (float) t.pos[1] * scale;
-    oculus_pos[2] = (float) t.pos[2] * scale;
+    {
+        boost::mutex::scoped_lock lock(pose_mutex);
 
-    std::cout << oculus_pos[0] << "," <<  \
-        oculus_pos[1] << "," << \
-        oculus_pos[2] << std::endl;
+        oculus_pose.x = (float) t.pos[0] * scale;
+        oculus_pose.y = (float) t.pos[1] * scale;
+        oculus_pose.z = (float) t.pos[2] * scale;
+
+        oculus_pose.orient = glm::quat(
+                t.quat[3],
+                t.quat[0],
+                t.quat[1],
+                t.quat[2]);
+    }
+    
+    std::cout << "Position: " << oculus_pose.x << "," <<  \
+        oculus_pose.y << "," << \
+        oculus_pose.z << std::endl << \
+        "Orientation: " << oculus_pose.orient.x <<  "," << \
+        oculus_pose.orient.y << "," << \
+        oculus_pose.orient.z << "," << \
+        oculus_pose.orient.w << std::endl;
+
 }
 
 static void windowSizeCallback(GLFWwindow* p_Window, int p_Width, int p_Height)
@@ -90,9 +119,9 @@ static void setOpenGLState(void)
 
 void initVrpn(void) 
 {
-    vrpn_tracker = 
+    oculus_tracker = 
         new vrpn_Tracker_Remote("Oculus@158.130.62.126:3883");
-    vrpn_tracker->register_change_handler(0, handleTracker);
+    oculus_tracker->register_change_handler(0, handleTracker);
 }
 
 void initOvr(void) 
@@ -294,7 +323,7 @@ int main(void)
     while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && \
             !glfwWindowShouldClose(window))
     {
-        vrpn_tracker->mainloop();
+        oculus_tracker->mainloop();
 
         ovrFrameTiming m_HmdFrameTiming = ovrHmd_BeginFrame(hmd, 0);
 
