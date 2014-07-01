@@ -57,13 +57,40 @@ struct Pose {
     glm::quat orient;
 };
 Pose oculus_pose;
+Pose tool_pose;
 float scale = 1.0f;
 boost::mutex pose_mutex;
 
 vrpn_Tracker_Remote* oculus_tracker;
+vrpn_Tracker_Remote* tool_tracker;
 
+void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
+{
+    {
+        boost::mutex::scoped_lock lock(pose_mutex);
 
-void VRPN_CALLBACK handleTracker(void* userData, const vrpn_TRACKERCB t)
+        tool_pose.x = (float) t.pos[0] * scale;
+        tool_pose.y = (float) t.pos[1] * scale;
+        tool_pose.z = (float) t.pos[2] * scale;
+
+        // probably not the best idea to create a new object each time...
+        tool_pose.orient = glm::quat(
+                t.quat[3],
+                -1.0f * t.quat[0],
+                t.quat[1],
+                -1.0f * t.quat[2]);
+    }
+
+    std::cout << "Tool Position: " << tool_pose.x << "," <<  \
+        tool_pose.y << "," << \
+        tool_pose.z << std::endl << \
+        "Tool Orientation: " << tool_pose.orient.x <<  "," << \
+        tool_pose.orient.y << "," << \
+        tool_pose.orient.z << "," << \
+        tool_pose.orient.w << std::endl;
+}
+
+void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 {
 
     {
@@ -76,15 +103,15 @@ void VRPN_CALLBACK handleTracker(void* userData, const vrpn_TRACKERCB t)
         // probably not the best idea to create a new object each time...
         oculus_pose.orient = glm::quat(
                 t.quat[3],
-                t.quat[0],
+                -1.0f * t.quat[0],
                 t.quat[1],
-                t.quat[2]);
+                -1.0f * t.quat[2]);
     }
     
-    std::cout << "Position: " << oculus_pose.x << "," <<  \
+    std::cout << "Oculus Position: " << oculus_pose.x << "," <<  \
         oculus_pose.y << "," << \
         oculus_pose.z << std::endl << \
-        "Orientation: " << oculus_pose.orient.x <<  "," << \
+        "Oculus Orientation: " << oculus_pose.orient.x <<  "," << \
         oculus_pose.orient.y << "," << \
         oculus_pose.orient.z << "," << \
         oculus_pose.orient.w << std::endl;
@@ -122,7 +149,11 @@ void initVrpn(void)
 {
     oculus_tracker = 
         new vrpn_Tracker_Remote("Oculus@158.130.62.126:3883");
-    oculus_tracker->register_change_handler(0, handleTracker);
+    oculus_tracker->register_change_handler(0, oculusTrackerCallback);
+
+    tool_tracker = 
+        new vrpn_Tracker_Remote("Tool@158.130.62.126:3883");
+    tool_tracker->register_change_handler(0, toolTrackerCallback);
 }
 
 void initOvr(void) 
@@ -325,6 +356,7 @@ int main(void)
             !glfwWindowShouldClose(window))
     {
         oculus_tracker->mainloop();
+        tool_tracker->mainloop();
 
         ovrFrameTiming m_HmdFrameTiming = ovrHmd_BeginFrame(hmd, 0);
 
@@ -345,22 +377,39 @@ int main(void)
                     );
 
             // Projection
-            OVR::Matrix4f projection_matrix = 
-                OVR::Matrix4f(
-                        ovrMatrix4f_Projection(
-                            eye_render_desc[eye].Fov, 
-                            0.3f, 
-                            100.0f, 
-                            true)).Transposed();
+            glm::mat4 projection_matrix = 
+                fromOVRMatrix4f(
+                        OVR::Matrix4f(
+                            ovrMatrix4f_Projection(
+                                eye_render_desc[eye].Fov, 
+                                0.3f, 
+                                100.0f, 
+                                true)).Transposed()
+                        );
             
             
-            // View
-            OVR::Quatf orientation = OVR::Quatf(eye_pose.Orientation);
-            OVR::Matrix4f view_matrix = 
-                OVR::Matrix4f(orientation.Inverted()).Transposed();
+            // View (from Oculus Orientation Data)
+            //  OVR::Quatf orientation = OVR::Quatf(eye_pose.Orientation);
+            //  glm::mat4 view_matrix = 
+            //      fromOVRMatrix4f(
+            //              OVR::Matrix4f(orientation.Inverted()).Transposed()
+            //              );
+
+            // View (from OptiTrack Orientation Data)
+            Pose p;
+            {
+                boost::mutex::scoped_lock lock(pose_mutex);
+                p.x = oculus_pose.x; 
+                p.y = oculus_pose.y;
+                p.z = oculus_pose.z;
+                p.orient = oculus_pose.orient;
+            }
+            glm::mat4 view_matrix = glm::mat4_cast(glm::inverse(p.orient));
+
 
             // Model
             glm::mat4 model_matrix = glm::mat4(1.f);
+
 
             // Post processing
             glm::vec3 trans = glm::vec3(
@@ -370,10 +419,11 @@ int main(void)
             glm::mat4 post_matrix = glm::translate(glm::mat4(1.f), 
                     trans);
 
+
             // MVP 
             glm::mat4 mvp = 
-                fromOVRMatrix4f(projection_matrix) *
-                fromOVRMatrix4f(view_matrix) *
+                projection_matrix *
+                view_matrix *
                 model_matrix *
                 post_matrix;
 
