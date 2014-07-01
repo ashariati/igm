@@ -353,19 +353,14 @@ int main(void)
                             100.0f, 
                             true)).Transposed();
             
-            // View
-            glm::mat4 view_matrix = glm::mat4(1.f);
             
-            /*
-             * Integrate the orientation and position of the oculus 
-             * provided by the optitrack system, instead of orientation
-             * results provided by the oculus.
-             */
+            // View
+            OVR::Quatf orientation = OVR::Quatf(eye_pose.Orientation);
+            OVR::Matrix4f view_matrix = 
+                OVR::Matrix4f(orientation.Inverted()).Transposed();
 
             // Model
-            OVR::Quatf orientation = OVR::Quatf(eye_pose.Orientation);
-            OVR::Matrix4f model_matrix = 
-                OVR::Matrix4f(orientation.Inverted()).Transposed();
+            glm::mat4 model_matrix = glm::mat4(1.f);
 
             // Post processing
             glm::vec3 trans = glm::vec3(
@@ -378,8 +373,8 @@ int main(void)
             // MVP 
             glm::mat4 mvp = 
                 fromOVRMatrix4f(projection_matrix) *
-                view_matrix *
-                fromOVRMatrix4f(model_matrix) *
+                fromOVRMatrix4f(view_matrix) *
+                model_matrix *
                 post_matrix;
 
 
