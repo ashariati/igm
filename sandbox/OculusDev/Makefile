@@ -17,7 +17,8 @@ OBJPATH = ./obj
 BINPATH = ./bin
 SRCPATH = ./src
 
-LIBS = -L$(VRPNPATH)/pc_linux64 \
+LIBS = -L/usr/lib \
+	   -L$(VRPNPATH)/pc_linux64 \
 	   -L$(LIBOVRPATH)/Lib/Linux/Release/x86_64 \
 	   -L$(GLFWPATH)/build/src \
 	   -L$(GLEWPATH)/lib \
@@ -34,7 +35,8 @@ LIBS = -L$(VRPNPATH)/pc_linux64 \
 	   -lX11 \
 	   -lm \
 	   -lpthread \
-	   -ludev
+	   -ludev \
+	   -lboost_thread-mt
 
 OBJECTS = $(OBJPATH)/MarkOneOGL.o \
 		  $(OBJPATH)/objloader.o \
