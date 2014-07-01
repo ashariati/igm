@@ -73,6 +73,7 @@ void VRPN_CALLBACK handleTracker(void* userData, const vrpn_TRACKERCB t)
         oculus_pose.y = (float) t.pos[1] * scale;
         oculus_pose.z = (float) t.pos[2] * scale;
 
+        // probably not the best idea to create a new object each time...
         oculus_pose.orient = glm::quat(
                 t.quat[3],
                 t.quat[0],
@@ -353,12 +354,7 @@ int main(void)
                             true)).Transposed();
             
             // View
-            glm::vec3 view = glm::vec3(
-                    eye_render_desc[eye].ViewAdjust.x,
-                    eye_render_desc[eye].ViewAdjust.y,
-                    eye_render_desc[eye].ViewAdjust.z - 2.0f);
-            glm::mat4 view_matrix = glm::translate(glm::mat4(1.f), 
-                    view);
+            glm::mat4 view_matrix = glm::mat4(1.f);
             
             /*
              * Integrate the orientation and position of the oculus 
@@ -366,17 +362,25 @@ int main(void)
              * results provided by the oculus.
              */
 
-
             // Model
             OVR::Quatf orientation = OVR::Quatf(eye_pose.Orientation);
             OVR::Matrix4f model_matrix = 
                 OVR::Matrix4f(orientation.Inverted()).Transposed();
 
+            // Post processing
+            glm::vec3 trans = glm::vec3(
+                    eye_render_desc[eye].ViewAdjust.x,
+                    eye_render_desc[eye].ViewAdjust.y,
+                    eye_render_desc[eye].ViewAdjust.z - 2.0f);
+            glm::mat4 post_matrix = glm::translate(glm::mat4(1.f), 
+                    trans);
+
             // MVP 
             glm::mat4 mvp = 
                 fromOVRMatrix4f(projection_matrix) *
                 view_matrix *
-                fromOVRMatrix4f(model_matrix);
+                fromOVRMatrix4f(model_matrix) *
+                post_matrix;
 
 
             glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp[0][0]);
