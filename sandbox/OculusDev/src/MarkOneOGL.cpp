@@ -27,14 +27,9 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/gtx/transform.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #include <boost/thread/mutex.hpp>
-
-// Use to load .obj in the future
-// #include <assimp/Importer.hpp>
-
-// Use to load .DDS
-// #include <SOIL.h>
 
 
 // Oculus
@@ -83,8 +78,7 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
     // Order: 
     // 1st - Rotate to oculus frame
     // 2nd - Translate to oculus frame
-    // 3rd - Rotate to graphic frame
-    glm::mat4 toGraphicFrame =
+    glm::mat4 toOculusFrame =
         glm::translate(
                 glm::mat4(1.0f), 
                 glm::vec3(
@@ -94,7 +88,7 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
                 ) * glm::mat4_cast(glm::inverse(op.orient));
 
     glm::vec4 tool_position = 
-        toGraphicFrame * 
+        toOculusFrame * 
         glm::vec4(
                 (float) t.pos[0] * scale,
                 (float) t.pos[1] * scale,
@@ -104,19 +98,13 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 
 
     Pose tp;
-
     tp.x = tool_position[0];
     tp.y = tool_position[1];
     tp.z = tool_position[2];
 
-    glm::quat R = glm::normalize(
-            glm::quat(M_PI / 2, 0.0f, 1.0f, 0.0f) *
-            glm::inverse(op.orient)
-            );
-
+    // We need to gather an orientation w.r.t to the oculus frame
     tp.orient = 
         glm::normalize(
-                R *
                 glm::quat(
                     t.quat[3],
                     t.quat[0],
@@ -133,42 +121,32 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
         tool_pose.orient = tp.orient;
     }
 
-    glm::vec3 te = glm::eulerAngles(tp.orient);
-    glm::vec3 oe = glm::eulerAngles(op.orient);
-
     std::cout << "Tool Position: " << tp.x << "," <<  \
         tp.y << "," << \
-        tp.z << std::endl << \
-        "Tool Orientation: " << te[0] <<  "," << \
-        te[1] << "," << \
-        te[2] << std::endl;
+        tp.z << std::endl;
 
-    std::cout << "Oculus Position: " << op.x << "," <<  \
-        op.y << "," << \
-        op.z << std::endl << \
-        "Oculus Orientation: " << oe[0] <<  "," << \
-        oe[1] << "," << \
-        oe[2] << std::endl;
+
 }
 
 void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 {
+    glm::quat q = 
+        glm::normalize(
+                glm::quat(
+                    t.quat[3], 
+                    t.quat[0], 
+                    t.quat[1], 
+                    t.quat[2])
+                );
 
     {
         boost::mutex::scoped_lock lock(pose_mutex);
 
-        // No translation required for position because the oculus frame
-        // and graphic frame share the same origin and y-axis
         oculus_pose.x = (float) t.pos[0] * scale;
         oculus_pose.y = (float) t.pos[1] * scale;
         oculus_pose.z = (float) t.pos[2] * scale;
 
-        // Immediately transform to the graphic frame
-        oculus_pose.orient = glm::quat(
-                t.quat[3],
-                -1.0f * t.quat[0],
-                t.quat[1],
-                -1.0f * t.quat[2]);
+        oculus_pose.orient = q;
     }
 
 }
