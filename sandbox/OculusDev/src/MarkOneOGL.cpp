@@ -117,9 +117,11 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
         tool_pose.orient = tp.orient;
     }
 
-    std::cout << "Tool Position: " << tp.x << "," <<  \
-        tp.y << "," << \
-        tp.z << std::endl;
+    std::cout << "Tool Orientation: " << 
+        tp.orient.w << "," <<
+        tp.orient.x << "," <<
+        tp.orient.y << "," <<
+        tp.orient.z << std::endl;
 
 
 }
