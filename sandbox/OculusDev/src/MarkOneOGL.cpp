@@ -53,7 +53,7 @@ struct Pose {
 
     glm::quat orient;
 };
-Pose oculus_pose;
+Pose oculus_pose; // This is technically the view pose...
 Pose tool_pose;
 float scale = 1.0f;
 boost::mutex pose_mutex;
@@ -65,7 +65,6 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 {
 
     Pose op;
-
     {
         boost::mutex::scoped_lock lock(pose_mutex);
 
@@ -75,11 +74,7 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
         op.orient = oculus_pose.orient;
     }
 
-    // Order: 
-    // 1st - Rotate to oculus frame
-    // 2nd - Translate to oculus frame
-    // 3rd - Rotate to camera view frame
-    glm::mat4 toOculusFrame =
+    glm::mat4 toViewFrame =
         glm::translate(
                 glm::mat4(1.0f), 
                 glm::vec3(
@@ -89,7 +84,7 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
                 ) * glm::mat4_cast(glm::inverse(op.orient));
 
     glm::vec4 tool_position = 
-        toOculusFrame * 
+        toViewFrame * 
         glm::vec4(
                 (float) t.pos[0] * scale,
                 (float) t.pos[1] * scale,
@@ -103,9 +98,9 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
     tp.y = tool_position[1];
     tp.z = tool_position[2];
 
-    // We need to gather an orientation w.r.t to the oculus frame
     tp.orient = 
         glm::normalize(
+                glm::inverse(op.orient) *
                 glm::quat(
                     t.quat[3],
                     t.quat[0],
