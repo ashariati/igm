@@ -140,6 +140,16 @@ void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
                     t.quat[2])
                 );
 
+    // Take a point on the y axis of the Oculus frame
+    glm::vec4 v = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    // Rotate the point according the Oculus orientation
+    v = glm::mat4_cast(q) * v;
+    // The point represents the new direction of the Oculus y-axis
+    glm::quat toViewFrame = glm::normalize(glm::quat(0.0f, v[0], v[1], v[2]));
+    // Add an additional 180 degree rotation around this y-axis to transform
+    // the Oculus orientation to the camera view frame
+    q = glm::normalize(toViewFrame * q);
+
     {
         boost::mutex::scoped_lock lock(pose_mutex);
 
@@ -149,7 +159,6 @@ void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 
         oculus_pose.orient = q;
     }
-
 }
 
 static void windowSizeCallback(GLFWwindow* p_Window, int p_Width, int p_Height)
@@ -382,6 +391,19 @@ int main(void)
 
     GLuint mvp_id = glGetUniformLocation(program_id, "MVP");
 
+    /*
+     * Initialize a state for the oculus, so the graphic renders properly
+     * even before the oculus is seen by the optitrack
+     */
+    {
+        boost::mutex::scoped_lock lock(pose_mutex);
+
+        oculus_pose.x = 0.0f;
+        oculus_pose.y = 0.0f;
+        oculus_pose.z = 0.0f;
+
+        oculus_pose.orient = glm::quat(0.0f, 0.0f, 1.0f, 0.0f);
+    }
 
 
     glfwSetWindowSizeCallback(window, windowSizeCallback);
@@ -420,14 +442,14 @@ int main(void)
                                 100.0f, 
                                 true)).Transposed()
                         );
-            
-            
+
+
             // View (from Oculus Orientation Data)
-            OVR::Quatf orientation = OVR::Quatf(eye_pose.Orientation);
-            //  glm::mat4 view_matrix = 
-            //      fromOVRMatrix4f(
-            //              OVR::Matrix4f(orientation.Inverted()).Transposed()
-            //              );
+            //  OVR::Quatf orientation = OVR::Quatf(eye_pose.Orientation);
+            //   glm::mat4 view_matrix = 
+            //       fromOVRMatrix4f(
+            //               OVR::Matrix4f(orientation)
+            //               );
 
             // View (from OptiTrack Orientation Data)
             Pose p;
@@ -438,18 +460,9 @@ int main(void)
                 p.z = oculus_pose.z;
                 p.orient = oculus_pose.orient;
             }
-
-            // Take a point on the y axis
-            glm::vec4 v = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
-            v = glm::mat4_cast(p.orient) * v;
-            glm::quat q = glm::normalize(glm::quat(0.0f, v[0], v[1], v[2]));
-            p.orient = glm::normalize(q * p.orient);
-            glm::quat ovr_orient = glm::normalize(glm::quat_cast(fromOVRMatrix4f(OVR::Matrix4f(orientation))));
-
             glm::mat4 view_matrix = glm::inverse(
                     glm::mat4_cast(p.orient)
                     );
-
 
 
             // Model
