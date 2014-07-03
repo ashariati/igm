@@ -78,6 +78,7 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
     // Order: 
     // 1st - Rotate to oculus frame
     // 2nd - Translate to oculus frame
+    // 3rd - Rotate to camera view frame
     glm::mat4 toOculusFrame =
         glm::translate(
                 glm::mat4(1.0f), 
@@ -422,7 +423,7 @@ int main(void)
             
             
             // View (from Oculus Orientation Data)
-            //  OVR::Quatf orientation = OVR::Quatf(eye_pose.Orientation);
+            OVR::Quatf orientation = OVR::Quatf(eye_pose.Orientation);
             //  glm::mat4 view_matrix = 
             //      fromOVRMatrix4f(
             //              OVR::Matrix4f(orientation.Inverted()).Transposed()
@@ -437,11 +438,24 @@ int main(void)
                 p.z = oculus_pose.z;
                 p.orient = oculus_pose.orient;
             }
-            glm::mat4 view_matrix = glm::mat4_cast(glm::inverse(p.orient));
+
+            // Take a point on the y axis
+            glm::vec4 v = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+            v = glm::mat4_cast(p.orient) * v;
+            glm::quat q = glm::normalize(glm::quat(0.0f, v[0], v[1], v[2]));
+            p.orient = glm::normalize(q * p.orient);
+            glm::quat ovr_orient = glm::normalize(glm::quat_cast(fromOVRMatrix4f(OVR::Matrix4f(orientation))));
+
+            glm::mat4 view_matrix = glm::inverse(
+                    glm::mat4_cast(p.orient)
+                    );
+
 
 
             // Model
-            glm::mat4 model_matrix = glm::mat4(1.f);
+            glm::mat4 model_matrix = glm::mat4_cast(
+                    glm::quat(0.0f, 0.0f, 1.0f, 0.0f)
+                    );
 
 
             // Pre processing
