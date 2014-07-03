@@ -53,7 +53,8 @@ struct Pose {
 
     glm::quat orient;
 };
-Pose oculus_pose; // This is technically the view pose...
+
+Pose view_pose;
 Pose tool_pose;
 float scale = 1.0f;
 boost::mutex pose_mutex;
@@ -68,10 +69,10 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
     {
         boost::mutex::scoped_lock lock(pose_mutex);
 
-        op.x = oculus_pose.x;
-        op.y = oculus_pose.y;
-        op.z = oculus_pose.z;
-        op.orient = oculus_pose.orient;
+        op.x = view_pose.x;
+        op.y = view_pose.y;
+        op.z = view_pose.z;
+        op.orient = view_pose.orient;
     }
 
     glm::mat4 toViewFrame =
@@ -150,11 +151,11 @@ void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
     {
         boost::mutex::scoped_lock lock(pose_mutex);
 
-        oculus_pose.x = (float) t.pos[0] * scale;
-        oculus_pose.y = (float) t.pos[1] * scale;
-        oculus_pose.z = (float) t.pos[2] * scale;
+        view_pose.x = (float) t.pos[0] * scale;
+        view_pose.y = (float) t.pos[1] * scale;
+        view_pose.z = (float) t.pos[2] * scale;
 
-        oculus_pose.orient = q;
+        view_pose.orient = q;
     }
 }
 
@@ -395,11 +396,11 @@ int main(void)
     {
         boost::mutex::scoped_lock lock(pose_mutex);
 
-        oculus_pose.x = 0.0f;
-        oculus_pose.y = 0.0f;
-        oculus_pose.z = 0.0f;
+        view_pose.x = 0.0f;
+        view_pose.y = 0.0f;
+        view_pose.z = 0.0f;
 
-        oculus_pose.orient = glm::quat(0.0f, 0.0f, 1.0f, 0.0f);
+        view_pose.orient = glm::quat(0.0f, 0.0f, 1.0f, 0.0f);
     }
 
 
@@ -452,10 +453,10 @@ int main(void)
             Pose p;
             {
                 boost::mutex::scoped_lock lock(pose_mutex);
-                p.x = oculus_pose.x; 
-                p.y = oculus_pose.y;
-                p.z = oculus_pose.z;
-                p.orient = oculus_pose.orient;
+                p.x = view_pose.x; 
+                p.y = view_pose.y;
+                p.z = view_pose.z;
+                p.orient = view_pose.orient;
             }
             glm::mat4 view_matrix = glm::inverse(
                     glm::mat4_cast(p.orient)
