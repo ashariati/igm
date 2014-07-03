@@ -65,24 +65,24 @@ vrpn_Tracker_Remote* tool_tracker;
 void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 {
 
-    Pose op;
+    Pose vp;
     {
         boost::mutex::scoped_lock lock(pose_mutex);
 
-        op.x = view_pose.x;
-        op.y = view_pose.y;
-        op.z = view_pose.z;
-        op.orient = view_pose.orient;
+        vp.x = view_pose.x;
+        vp.y = view_pose.y;
+        vp.z = view_pose.z;
+        vp.orient = view_pose.orient;
     }
 
     glm::mat4 toViewFrame =
         glm::translate(
                 glm::mat4(1.0f), 
                 glm::vec3(
-                    -1.0f * op.x,
-                    -1.0f * op.y,
-                    -1.0f * op.z)
-                ) * glm::mat4_cast(glm::inverse(op.orient));
+                    -1.0f * vp.x,
+                    -1.0f * vp.y,
+                    -1.0f * vp.z)
+                ) * glm::mat4_cast(glm::inverse(vp.orient));
 
     glm::vec4 tool_position = 
         toViewFrame * 
@@ -101,7 +101,7 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 
     tp.orient = 
         glm::normalize(
-                glm::inverse(op.orient) *
+                glm::inverse(vp.orient) *
                 glm::quat(
                     t.quat[3],
                     t.quat[0],
@@ -450,16 +450,16 @@ int main(void)
             //               );
 
             // View (from OptiTrack Orientation Data)
-            Pose p;
+            Pose vp;
             {
                 boost::mutex::scoped_lock lock(pose_mutex);
-                p.x = view_pose.x; 
-                p.y = view_pose.y;
-                p.z = view_pose.z;
-                p.orient = view_pose.orient;
+                vp.x = view_pose.x; 
+                vp.y = view_pose.y;
+                vp.z = view_pose.z;
+                vp.orient = view_pose.orient;
             }
             glm::mat4 view_matrix = glm::inverse(
-                    glm::mat4_cast(p.orient)
+                    glm::mat4_cast(vp.orient)
                     );
 
 
