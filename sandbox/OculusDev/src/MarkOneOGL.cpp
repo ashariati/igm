@@ -60,7 +60,9 @@ Pose view_pose;
 Pose tool_pose;
 float scale = 1.0f;
 boost::mutex pose_mutex;
+
 bool firstLocalization;
+bool isVisible;
 
 vrpn_Tracker_Remote* oculus_tracker;
 vrpn_Tracker_Remote* tool_tracker;
@@ -161,6 +163,7 @@ void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
         view_pose.orient = q;
     }
 
+
     firstLocalization = false;
 }
 
@@ -227,9 +230,6 @@ glm::mat4 fromOVRMatrix4f(const OVR::Matrix4f &in)
 
 int main(void)
 {
-
-    firstLocalization = true;
-    ovr_world = glm::normalize(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 
     initVrpn();
     initOvr();
@@ -402,6 +402,17 @@ int main(void)
      * Initialize a state for the oculus, so the graphic renders properly
      * even before the oculus is seen by the optitrack
      */
+
+    Pose vp;
+    vp.x = 0.0f;
+    vp.y = 0.0f;
+    vp.z = 0.0f;
+    vp.orient = glm::quat(0.0f, 0.0f, 1.0f, 0.0f);
+
+    firstLocalization = true;
+    isVisible = false;
+    ovr_world = glm::normalize(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+
     {
         boost::mutex::scoped_lock lock(pose_mutex);
 
@@ -465,55 +476,58 @@ int main(void)
                         );
 
 
-            Pose vp;
             {
                 boost::mutex::scoped_lock lock(pose_mutex);
                 vp.x = view_pose.x; 
                 vp.y = view_pose.y;
                 vp.z = view_pose.z;
+
+                isVisible = (glm::any(glm::notEqual(vp.orient, view_pose.orient)) ? true : false);
+
                 vp.orient = view_pose.orient;
             }
-            glm::quat view_world = vp.orient;
+            glm::quat view_world_opt = vp.orient;
 
 
             if (firstLocalization) {
                 ovr_world = 
                     glm::normalize(
                             glm::inverse(view_ovr) *
-                            view_world
+                            view_world_opt
                             );
             }
 
 
-            std::cout <<
-                "OVR World: " <<
-                ovr_world.w << ", " <<
-                ovr_world.x << ", " <<
-                ovr_world.y << ", " <<
-                ovr_world.z << std::endl;
-
-
-            glm::quat view_world_alt = 
+            glm::quat view_world_ovr = 
                 glm::normalize(
                         view_ovr *
                         ovr_world
                         );
 
+            std::cout << isVisible << std::endl;
             std::cout << 
                 "View Opti: " << 
-                view_world.w << ", " <<
-                view_world.x << ", " <<
-                view_world.y << ", " <<
-                view_world.z << ", " <<
+                view_world_opt.w << ", " <<
+                view_world_opt.x << ", " <<
+                view_world_opt.y << ", " <<
+                view_world_opt.z << ", " <<
                 std::endl <<
                 "View Ovr: " <<
-                view_world_alt.w << ", " <<
-                view_world_alt.x << ", " <<
-                view_world_alt.y << ", " <<
-                view_world_alt.z << std::endl;
+                view_world_ovr.w << ", " <<
+                view_world_ovr.x << ", " <<
+                view_world_ovr.y << ", " <<
+                view_world_ovr.z << std::endl;
+
+
+            glm::quat view_world;
+            if (isVisible) {
+                view_world = glm::mix(view_world_opt, view_world_ovr, 0.5f);
+            } else {
+                view_world = view_world_ovr;
+            }
 
             glm::mat4 view_matrix = glm::inverse(
-                    glm::mat4_cast(vp.orient)
+                    glm::mat4_cast(view_world)
                     );
 
 
