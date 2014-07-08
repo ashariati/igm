@@ -118,11 +118,11 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
         tool_pose.orient = tp.orient;
     }
 
-    std::cout << "Tool Orientation: " << 
-        tp.orient.w << "," <<
-        tp.orient.x << "," <<
-        tp.orient.y << "," <<
-        tp.orient.z << std::endl;
+    // std::cout << "Tool Orientation: " << 
+    //     tp.orient.w << "," <<
+    //     tp.orient.x << "," <<
+    //     tp.orient.y << "," <<
+    //     tp.orient.z << std::endl;
 
 
 }
@@ -442,14 +442,19 @@ int main(void)
                         );
 
 
-            // View (from Oculus Orientation Data)
-            //  OVR::Quatf orientation = OVR::Quatf(eye_pose.Orientation);
-            //   glm::mat4 view_matrix = 
-            //       fromOVRMatrix4f(
-            //               OVR::Matrix4f(orientation)
-            //               );
+            // View
 
-            // View (from OptiTrack Orientation Data)
+            glm::quat view_ovr =
+                glm::normalize(
+                        glm::quat_cast(
+                            fromOVRMatrix4f(
+                                OVR::Matrix4f(
+                                    OVR::Quatf(eye_pose.Orientation)
+                                    )
+                                )
+                            )
+                        );
+
             Pose vp;
             {
                 boost::mutex::scoped_lock lock(pose_mutex);
@@ -458,6 +463,35 @@ int main(void)
                 vp.z = view_pose.z;
                 vp.orient = view_pose.orient;
             }
+
+            glm::quat view_world = vp.orient;
+
+            glm::quat ovr_world = 
+                glm::normalize(
+                        glm::inverse(view_ovr) *
+                        view_world
+                        );
+
+
+            glm::quat view_world_alt = 
+                glm::normalize(
+                        view_ovr *
+                        ovr_world
+                        );
+
+            std::cout << 
+                "View Opti: " << 
+                view_world.w << ", " <<
+                view_world.x << ", " <<
+                view_world.y << ", " <<
+                view_world.z << ", " <<
+                std::endl <<
+                "View Ovr: " <<
+                view_world_alt.w << ", " <<
+                view_world_alt.x << ", " <<
+                view_world_alt.y << ", " <<
+                view_world_alt.z << std::endl;
+
             glm::mat4 view_matrix = glm::inverse(
                     glm::mat4_cast(vp.orient)
                     );
