@@ -54,10 +54,13 @@ struct Pose {
     glm::quat orient;
 };
 
+glm::quat ovr_world;
+
 Pose view_pose;
 Pose tool_pose;
 float scale = 1.0f;
 boost::mutex pose_mutex;
+bool firstLocalization;
 
 vrpn_Tracker_Remote* oculus_tracker;
 vrpn_Tracker_Remote* tool_tracker;
@@ -157,6 +160,8 @@ void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 
         view_pose.orient = q;
     }
+
+    firstLocalization = false;
 }
 
 static void windowSizeCallback(GLFWwindow* p_Window, int p_Width, int p_Height)
@@ -222,6 +227,10 @@ glm::mat4 fromOVRMatrix4f(const OVR::Matrix4f &in)
 
 int main(void)
 {
+
+    firstLocalization = true;
+    ovr_world = glm::normalize(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+
     initVrpn();
     initOvr();
 
@@ -455,6 +464,7 @@ int main(void)
                             )
                         );
 
+
             Pose vp;
             {
                 boost::mutex::scoped_lock lock(pose_mutex);
@@ -463,14 +473,24 @@ int main(void)
                 vp.z = view_pose.z;
                 vp.orient = view_pose.orient;
             }
-
             glm::quat view_world = vp.orient;
 
-            glm::quat ovr_world = 
-                glm::normalize(
-                        glm::inverse(view_ovr) *
-                        view_world
-                        );
+
+            if (firstLocalization) {
+                ovr_world = 
+                    glm::normalize(
+                            glm::inverse(view_ovr) *
+                            view_world
+                            );
+            }
+
+
+            std::cout <<
+                "OVR World: " <<
+                ovr_world.w << ", " <<
+                ovr_world.x << ", " <<
+                ovr_world.y << ", " <<
+                ovr_world.z << std::endl;
 
 
             glm::quat view_world_alt = 
