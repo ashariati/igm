@@ -59,9 +59,9 @@ Pose tool_pose;
 
 boost::mutex tf_mutex;
 glm::mat4 view_ovr;
-glm::mat4 mask_world;
-glm::mat4 view_mask;
 glm::mat4 ovr_world;
+glm::mat4 view_mask;
+glm::mat4 mask_world;
 
 bool firstLocalization;
 bool isVisible;
@@ -72,15 +72,13 @@ vrpn_Tracker_Remote* tool_tracker;
 void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 {
 
-    glm::mat4 vm;
     glm::mat4 mw;
     {
         boost::mutex::scoped_lock lock(tf_mutex);
-        vm = view_mask;
         mw = mask_world;
     }
 
-    glm::mat4 vw = vm * mw;
+    glm::mat4 vw = mw;
 
     glm::vec4 tool_position = 
         glm::inverse(vw) * 
@@ -132,27 +130,22 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 
 void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 {
+    // We negate the x and z components because, this is the only way we can
+    // report the orientation with respect to the world frame rotated 180deg.
+    // Because rotations are not commutative we cannot calculate this 
+    // analytically. There would exist one transformation between the world
+    // frame and the reported orientation. 
     glm::quat q_mw = 
         glm::normalize(
                 glm::quat(
                     t.quat[3], 
-                    t.quat[0], 
+                    -1.0f * t.quat[0], 
                     t.quat[1], 
-                    t.quat[2])
+                    -1.0f * t.quat[2])
                 );
-
-    // Take a point on the y axis of the Oculus frame
-    glm::vec4 v = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
-    // Rotate the point according the Oculus orientation which
-    // represents the new direction of the Oculus y-axis
-    v = glm::mat4_cast(q_mw) * v;
-    // Create the quaternion that represents a 180deg rotation 
-    // about this new vector
-    glm::quat q_vm = glm::normalize(glm::quat(0.0f, v[0], v[1], v[2]));
 
     {
         boost::mutex::scoped_lock lock(tf_mutex);
-        view_mask = glm::mat4_cast(q_vm);
         mask_world = 
             glm::translate(
                     glm::mat4(1.0f), 
@@ -404,13 +397,11 @@ int main(void)
     firstLocalization = true;
     isVisible = false;
 
-    view_ovr = glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-    mask_world = glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-    view_mask = glm::mat4_cast(glm::quat(0.0f, 0.0f, 1.0f, 0.0f));
+    view_ovr = glm::mat4_cast(glm::quat(0.0f, 0.0f, 1.0f, 0.0f));
     ovr_world = glm::mat4_cast(glm::quat(0.0f, 0.0f, 1.0f, 0.0f));
+    mask_world = glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 
     glm::mat4 mw = mask_world;
-    glm::mat4 vm = view_mask;
 
     initVrpn();
 
@@ -442,7 +433,6 @@ int main(void)
                 ? true : false;
 
             mw = mask_world;
-            vm = view_mask;
         }
 
 
@@ -470,7 +460,7 @@ int main(void)
 
 
             // View
-            view_ovr =
+            glm::mat4 vo =
                 fromOVRMatrix4f(
                         OVR::Matrix4f(
                             OVR::Quatf(eye_pose.Orientation)
@@ -478,25 +468,23 @@ int main(void)
                         );
 
 
+            // This is saying that the Mask frame is the same as View...
             if (firstLocalization)
-                ovr_world = glm::inverse(view_ovr) * vm * mw;
+                ovr_world = glm::inverse(vo) * mw;
 
-
-            glm::mat4 vw = view_ovr * ovr_world;
-
-
-            glm::quat view_world;
-            // if (isVisible) {
-            //     view_world = glm::mix(view_world_opt, view_world_ovr, 0.5f);
-            // } else {
-            //     view_world = view_world_ovr;
-            // }
-
-            view_world = glm::quat_cast(vw);
-            // view_world = glm::quat_cast(vm * mw);
-
+            
+            // view_ovr = vo;
+            view_ovr = 
+                glm::mat4_cast(
+                        glm::normalize(
+                            glm::quat_cast(
+                                mw 
+                                )
+                            )
+                        );
 
             glm::mat4 view_matrix = 
+                view_ovr *
                 glm::translate(
                         glm::mat4(1.f), 
                         glm::vec3(
@@ -504,7 +492,6 @@ int main(void)
                             eye_render_desc[eye].ViewAdjust.y,
                             eye_render_desc[eye].ViewAdjust.z)
                         ) *
-                glm::inverse(glm::mat4_cast(view_world)) * 
                 glm::lookAt(
                         glm::vec3(0.0f, 0.0f, 2.0f),
                         glm::vec3(0.0f, 0.0f, 0.0f),
@@ -513,7 +500,7 @@ int main(void)
 
 
             // Model
-            glm::mat4 model_matrix = 
+            glm::mat4 model_matrix =
                 glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)) *
                 glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 
