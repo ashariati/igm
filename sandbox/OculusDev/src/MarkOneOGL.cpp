@@ -404,10 +404,10 @@ int main(void)
     firstLocalization = true;
     isVisible = false;
 
-    view_ovr = glm::mat4_cast(glm::normalize(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)));
-    mask_world = glm::mat4_cast(glm::normalize(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)));
-    view_mask = glm::mat4_cast(glm::normalize(glm::quat(0.0f, 0.0f, 1.0f, 0.0f)));
-    ovr_world = glm::mat4_cast(glm::normalize(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)));
+    view_ovr = glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+    mask_world = glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+    view_mask = glm::mat4_cast(glm::quat(0.0f, 0.0f, 1.0f, 0.0f));
+    ovr_world = glm::mat4_cast(glm::quat(0.0f, 0.0f, 1.0f, 0.0f));
 
     glm::mat4 mw = mask_world;
     glm::mat4 vm = view_mask;
@@ -492,32 +492,37 @@ int main(void)
             //     view_world = view_world_ovr;
             // }
 
-            view_world = glm::quat_cast(vm * mw);
+            view_world = glm::quat_cast(vw);
+            // view_world = glm::quat_cast(vm * mw);
 
-            glm::mat4 view_matrix = glm::inverse(glm::mat4_cast(view_world));
+
+            glm::mat4 view_matrix = 
+                glm::translate(
+                        glm::mat4(1.f), 
+                        glm::vec3(
+                            eye_render_desc[eye].ViewAdjust.x,
+                            eye_render_desc[eye].ViewAdjust.y,
+                            eye_render_desc[eye].ViewAdjust.z)
+                        ) *
+                glm::inverse(glm::mat4_cast(view_world)) * 
+                glm::lookAt(
+                        glm::vec3(0.0f, 0.0f, 2.0f),
+                        glm::vec3(0.0f, 0.0f, 0.0f),
+                        glm::vec3(0.0f, 1.0f, 0.0f)
+                        );
 
 
             // Model
-            glm::mat4 model_matrix = glm::mat4_cast(
-                    glm::quat(0.0f, 0.0f, 1.0f, 0.0f)
-                    );
-
-
-            // Pre processing
-            glm::vec3 trans = glm::vec3(
-                    eye_render_desc[eye].ViewAdjust.x,
-                    eye_render_desc[eye].ViewAdjust.y,
-                    eye_render_desc[eye].ViewAdjust.z - 2.0f);
-            glm::mat4 pre_matrix = glm::translate(glm::mat4(1.f), 
-                    trans);
+            glm::mat4 model_matrix = 
+                glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)) *
+                glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 
 
             // MVP 
             glm::mat4 mvp = 
                 projection_matrix *
                 view_matrix *
-                model_matrix *
-                pre_matrix;
+                model_matrix;
 
 
             glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp[0][0]);
