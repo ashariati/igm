@@ -54,12 +54,14 @@ struct Pose {
     glm::quat orient;
 };
 
-glm::quat ovr_world;
-
-Pose view_pose;
-Pose tool_pose;
-float scale = 1.0f;
 boost::mutex pose_mutex;
+Pose tool_pose;
+
+boost::mutex tf_mutex;
+glm::mat4 view_ovr;
+glm::mat4 mask_world;
+glm::mat4 view_mask;
+glm::mat4 ovr_world;
 
 bool firstLocalization;
 bool isVisible;
@@ -70,31 +72,22 @@ vrpn_Tracker_Remote* tool_tracker;
 void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 {
 
-    Pose vp;
+    glm::mat4 vm;
+    glm::mat4 mw;
     {
-        boost::mutex::scoped_lock lock(pose_mutex);
-
-        vp.x = view_pose.x;
-        vp.y = view_pose.y;
-        vp.z = view_pose.z;
-        vp.orient = view_pose.orient;
+        boost::mutex::scoped_lock lock(tf_mutex);
+        vm = view_mask;
+        mw = mask_world;
     }
 
-    glm::mat4 toViewFrame =
-        glm::translate(
-                glm::mat4(1.0f), 
-                glm::vec3(
-                    -1.0f * vp.x,
-                    -1.0f * vp.y,
-                    -1.0f * vp.z)
-                ) * glm::mat4_cast(glm::inverse(vp.orient));
+    glm::mat4 vw = vm * mw;
 
     glm::vec4 tool_position = 
-        toViewFrame * 
+        glm::inverse(vw) * 
         glm::vec4(
-                (float) t.pos[0] * scale,
-                (float) t.pos[1] * scale,
-                (float) t.pos[2] * scale,
+                (float) t.pos[0],
+                (float) t.pos[1],
+                (float) t.pos[2],
                 1.0f
                 );
 
@@ -106,7 +99,7 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 
     tp.orient = 
         glm::normalize(
-                glm::inverse(vp.orient) *
+                glm::quat_cast(glm::inverse(vw)) *
                 glm::quat(
                     t.quat[3],
                     t.quat[0],
@@ -129,12 +122,17 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
     //     tp.orient.y << "," <<
     //     tp.orient.z << std::endl;
 
+    std::cout << "Tool Position: " << 
+        tp.x << "," <<
+        tp.y << "," <<
+        tp.z << std::endl;
+
 
 }
 
 void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 {
-    glm::quat q = 
+    glm::quat q_mw = 
         glm::normalize(
                 glm::quat(
                     t.quat[3], 
@@ -145,22 +143,22 @@ void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 
     // Take a point on the y axis of the Oculus frame
     glm::vec4 v = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
-    // Rotate the point according the Oculus orientation
-    v = glm::mat4_cast(q) * v;
-    // The point represents the new direction of the Oculus y-axis
-    glm::quat toViewFrame = glm::normalize(glm::quat(0.0f, v[0], v[1], v[2]));
-    // Add an additional 180 degree rotation around this y-axis to transform
-    // the Oculus orientation to the camera view frame
-    q = glm::normalize(toViewFrame * q);
+    // Rotate the point according the Oculus orientation which
+    // represents the new direction of the Oculus y-axis
+    v = glm::mat4_cast(q_mw) * v;
+    // Create the quaternion that represents a 180deg rotation 
+    // about this new vector
+    glm::quat q_vm = glm::normalize(glm::quat(0.0f, v[0], v[1], v[2]));
 
     {
-        boost::mutex::scoped_lock lock(pose_mutex);
-
-        view_pose.x = (float) t.pos[0] * scale;
-        view_pose.y = (float) t.pos[1] * scale;
-        view_pose.z = (float) t.pos[2] * scale;
-
-        view_pose.orient = q;
+        boost::mutex::scoped_lock lock(tf_mutex);
+        view_mask = glm::mat4_cast(q_vm);
+        mask_world = 
+            glm::translate(
+                    glm::mat4(1.0f), 
+                    glm::vec3(t.pos[0], t.pos[1], t.pos[2])
+                    ) *
+            glm::mat4_cast(q_mw);
     }
 
 
@@ -231,7 +229,6 @@ glm::mat4 fromOVRMatrix4f(const OVR::Matrix4f &in)
 int main(void)
 {
 
-    initVrpn();
     initOvr();
 
     if (!glfwInit()) {
@@ -398,33 +395,25 @@ int main(void)
 
     GLuint mvp_id = glGetUniformLocation(program_id, "MVP");
 
-    /*
-     * Initialize a state for the oculus, so the graphic renders properly
-     * even before the oculus is seen by the optitrack
-     */
+    glfwSetWindowSizeCallback(window, windowSizeCallback);
 
-    Pose vp;
-    vp.x = 0.0f;
-    vp.y = 0.0f;
-    vp.z = 0.0f;
-    vp.orient = glm::quat(0.0f, 0.0f, 1.0f, 0.0f);
+    /*
+     * Initialization of my system variables
+     */
 
     firstLocalization = true;
     isVisible = false;
-    ovr_world = glm::normalize(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 
-    {
-        boost::mutex::scoped_lock lock(pose_mutex);
+    view_ovr = glm::mat4_cast(glm::normalize(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)));
+    mask_world = glm::mat4_cast(glm::normalize(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)));
+    view_mask = glm::mat4_cast(glm::normalize(glm::quat(0.0f, 0.0f, 1.0f, 0.0f)));
+    ovr_world = glm::mat4_cast(glm::normalize(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)));
 
-        view_pose.x = 0.0f;
-        view_pose.y = 0.0f;
-        view_pose.z = 0.0f;
+    glm::mat4 mw = mask_world;
+    glm::mat4 vm = view_mask;
 
-        view_pose.orient = glm::quat(0.0f, 0.0f, 1.0f, 0.0f);
-    }
+    initVrpn();
 
-
-    glfwSetWindowSizeCallback(window, windowSizeCallback);
 
     while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && \
             !glfwWindowShouldClose(window))
@@ -438,6 +427,24 @@ int main(void)
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+        {
+            boost::mutex::scoped_lock lock(tf_mutex);
+
+            isVisible = 
+                glm::any(
+                        glm::notEqual(
+                            glm::quat_cast(mw), 
+                            glm::quat_cast(mask_world)
+                            )
+                        )
+                ? true : false;
+
+            mw = mask_world;
+            vm = view_mask;
+        }
+
 
         for (int eye_idx = 0; eye_idx < ovrEye_Count; eye_idx++)
         {
@@ -463,72 +470,31 @@ int main(void)
 
 
             // View
-
-            glm::quat view_ovr =
-                glm::normalize(
-                        glm::quat_cast(
-                            fromOVRMatrix4f(
-                                OVR::Matrix4f(
-                                    OVR::Quatf(eye_pose.Orientation)
-                                    )
-                                )
+            view_ovr =
+                fromOVRMatrix4f(
+                        OVR::Matrix4f(
+                            OVR::Quatf(eye_pose.Orientation)
                             )
                         );
 
 
-            {
-                boost::mutex::scoped_lock lock(pose_mutex);
-                vp.x = view_pose.x; 
-                vp.y = view_pose.y;
-                vp.z = view_pose.z;
-
-                isVisible = (glm::any(glm::notEqual(vp.orient, view_pose.orient)) ? true : false);
-
-                vp.orient = view_pose.orient;
-            }
-            glm::quat view_world_opt = vp.orient;
+            if (firstLocalization)
+                ovr_world = glm::inverse(view_ovr) * vm * mw;
 
 
-            if (firstLocalization) {
-                ovr_world = 
-                    glm::normalize(
-                            glm::inverse(view_ovr) *
-                            view_world_opt
-                            );
-            }
-
-
-            glm::quat view_world_ovr = 
-                glm::normalize(
-                        view_ovr *
-                        ovr_world
-                        );
-
-            std::cout << isVisible << std::endl;
-            std::cout << 
-                "View Opti: " << 
-                view_world_opt.w << ", " <<
-                view_world_opt.x << ", " <<
-                view_world_opt.y << ", " <<
-                view_world_opt.z << ", " <<
-                std::endl <<
-                "View Ovr: " <<
-                view_world_ovr.w << ", " <<
-                view_world_ovr.x << ", " <<
-                view_world_ovr.y << ", " <<
-                view_world_ovr.z << std::endl;
+            glm::mat4 vw = view_ovr * ovr_world;
 
 
             glm::quat view_world;
-            if (isVisible) {
-                view_world = glm::mix(view_world_opt, view_world_ovr, 0.5f);
-            } else {
-                view_world = view_world_ovr;
-            }
+            // if (isVisible) {
+            //     view_world = glm::mix(view_world_opt, view_world_ovr, 0.5f);
+            // } else {
+            //     view_world = view_world_ovr;
+            // }
 
-            glm::mat4 view_matrix = glm::inverse(
-                    glm::mat4_cast(view_world)
-                    );
+            view_world = glm::quat_cast(vm * mw);
+
+            glm::mat4 view_matrix = glm::inverse(glm::mat4_cast(view_world));
 
 
             // Model
