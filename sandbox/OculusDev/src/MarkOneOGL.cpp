@@ -230,13 +230,26 @@ int main(void)
     }
 
     ovrSizei client_size;
-    client_size.w = 640;
-    client_size.h = 480;
+    // client_size.w = 640;
+    // client_size.h = 480;
 
-    window = glfwCreateWindow(client_size.w, 
+    // window = glfwCreateWindow(client_size.w, 
+    //         client_size.h, 
+    //         "GLFW Oculus Rift Test", 
+    //         NULL, 
+    //         NULL);
+
+    client_size.w = hmd_desc.Resolution.w;
+    client_size.h = hmd_desc.Resolution.h;
+
+    int count;
+    GLFWmonitor** monitors = glfwGetMonitors(&count);
+
+    window = glfwCreateWindow(
+            client_size.w, 
             client_size.h, 
             "GLFW Oculus Rift Test", 
-            NULL, 
+            monitors[1], 
             NULL);
 
     if (!window) {
@@ -501,7 +514,7 @@ int main(void)
                             eye_render_desc[eye].ViewAdjust.z)
                         ) *
                 glm::lookAt(
-                        glm::vec3(0.0f, 0.0f, 2.0f),
+                        glm::vec3(0.0f, 0.0f, 4.0f),
                         glm::vec3(0.0f, 0.0f, 0.0f),
                         glm::vec3(0.0f, 1.0f, 0.0f)
                         );
