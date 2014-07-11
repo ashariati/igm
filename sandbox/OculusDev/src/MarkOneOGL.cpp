@@ -398,7 +398,7 @@ int main(void)
     GLuint program_id = LoadShaders("../shaders/StandardShading.vertexshader",
             "../shaders/StandardShading.fragmentshader");
 
-    bool res = loadOBJ("../assets/suzanne.obj", vertices, uvs, normals);
+    bool res = loadOBJ("../assets/DemonBloodSword.obj", vertices, uvs, normals);
 
     GLuint vertex_array_id;
     glGenVertexArrays(1, &vertex_array_id);
@@ -538,7 +538,8 @@ int main(void)
 
             glm::mat4 model_matrix =
                 glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)) *
-                glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+                // glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+                glm::mat4_cast(glm::quat(cos(M_PI / 4) , 1.0f, 0.0f, 0.0f));
 
 
             /*
@@ -561,7 +562,7 @@ int main(void)
             glEnableVertexAttribArray(0);
             glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-            glDrawArrays(GL_LINES, 0, vertices.size());
+            glDrawArrays(GL_TRIANGLES, 0, vertices.size());
             glDisableVertexAttribArray(0);
 
             ovrHmd_EndEyeRender(hmd, eye, eye_pose, &eye_texture[eye].Texture);
