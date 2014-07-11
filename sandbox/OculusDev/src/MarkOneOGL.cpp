@@ -40,12 +40,19 @@ ovrGLConfig ovr_gl_config;
 ovrEyeRenderDesc eye_render_desc[2];
 
 // OpenGL
-GLFWwindow* window;
 std::vector<glm::vec3> vertices;
 std::vector<glm::vec2> uvs;
 std::vector<glm::vec3> normals;
 
+// GLFW
+const bool fullscreen = true;
+GLFWwindow* window;
+
 // VRPN
+vrpn_Tracker_Remote* oculus_tracker;
+vrpn_Tracker_Remote* tool_tracker;
+
+// My System
 struct Pose {
     float x;
     float y;
@@ -65,8 +72,6 @@ glm::mat4 mask_world;
 bool firstLocalization;
 bool isVisible;
 
-vrpn_Tracker_Remote* oculus_tracker;
-vrpn_Tracker_Remote* tool_tracker;
 
 void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 {
@@ -230,27 +235,34 @@ int main(void)
     }
 
     ovrSizei client_size;
-    // client_size.w = 640;
-    // client_size.h = 480;
 
-    // window = glfwCreateWindow(client_size.w, 
-    //         client_size.h, 
-    //         "GLFW Oculus Rift Test", 
-    //         NULL, 
-    //         NULL);
+    if (fullscreen) {
 
-    client_size.w = hmd_desc.Resolution.w;
-    client_size.h = hmd_desc.Resolution.h;
+        int count;
+        GLFWmonitor** monitors = glfwGetMonitors(&count);
 
-    int count;
-    GLFWmonitor** monitors = glfwGetMonitors(&count);
+        client_size.w = hmd_desc.Resolution.w;
+        client_size.h = hmd_desc.Resolution.h;
 
-    window = glfwCreateWindow(
-            client_size.w, 
-            client_size.h, 
-            "GLFW Oculus Rift Test", 
-            monitors[1], 
-            NULL);
+        window = glfwCreateWindow(
+                client_size.w, 
+                client_size.h, 
+                "GLFW Oculus Rift Test", 
+                monitors[1], 
+                NULL);
+
+    } else {
+
+        client_size.w = 640;
+        client_size.h = 480;
+
+        window = glfwCreateWindow(client_size.w, 
+                client_size.h, 
+                "GLFW Oculus Rift Test", 
+                NULL, 
+                NULL);
+    }
+
 
     if (!window) {
         glfwTerminate();
