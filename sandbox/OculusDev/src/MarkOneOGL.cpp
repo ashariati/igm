@@ -60,7 +60,6 @@ Pose tool_pose;
 boost::mutex tf_mutex;
 glm::mat4 view_ovr;
 glm::mat4 ovr_world;
-glm::mat4 view_mask;
 glm::mat4 mask_world;
 
 bool firstLocalization;
@@ -78,10 +77,8 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
         mw = mask_world;
     }
 
-    glm::mat4 vw = mw;
-
     glm::vec4 tool_position = 
-        glm::inverse(vw) * 
+        glm::inverse(mw) * 
         glm::vec4(
                 (float) t.pos[0],
                 (float) t.pos[1],
@@ -97,7 +94,7 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 
     tp.orient = 
         glm::normalize(
-                glm::quat_cast(glm::inverse(vw)) *
+                glm::quat_cast(glm::inverse(mw)) *
                 glm::quat(
                     t.quat[3],
                     t.quat[0],
@@ -114,27 +111,30 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
         tool_pose.orient = tp.orient;
     }
 
-    // std::cout << "Tool Orientation: " << 
-    //     tp.orient.w << "," <<
-    //     tp.orient.x << "," <<
-    //     tp.orient.y << "," <<
-    //     tp.orient.z << std::endl;
+    std::cout << "Tool Orientation: " << 
+        tp.orient.w << "," <<
+        tp.orient.x << "," <<
+        tp.orient.y << "," <<
+        tp.orient.z << std::endl;
 
-    std::cout << "Tool Position: " << 
-        tp.x << "," <<
-        tp.y << "," <<
-        tp.z << std::endl;
+    // std::cout << "Tool Position: " << 
+    //     tp.x << "," <<
+    //     tp.y << "," <<
+    //     tp.z << std::endl;
 
 
 }
 
 void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 {
-    // We negate the x and z components because, this is the only way we can
-    // report the orientation with respect to the world frame rotated 180deg.
-    // Because rotations are not commutative we cannot calculate this 
-    // analytically. There would exist one transformation between the world
-    // frame and the reported orientation. 
+    /* 
+     * We negate the x and z components because, this is the only way we can
+     * report the orientation with respect to the world frame rotated 180deg.
+     * Because rotations are not commutative we cannot calculate this 
+     * analytically. There would exist one transformation between the world
+     * frame and the reported orientation. 
+     */
+
     glm::quat q_mw = 
         glm::normalize(
                 glm::quat(
@@ -259,6 +259,7 @@ int main(void)
      * Rendering to a framebuffer requires a bound texture, so we need
      * to get some of the parameters of the texture from OVR.
      */
+
     ovrSizei texture_size_left = ovrHmd_GetFovTextureSize(hmd, 
             ovrEye_Left, 
             hmd_desc.DefaultEyeFov[0], 
@@ -391,7 +392,7 @@ int main(void)
     glfwSetWindowSizeCallback(window, windowSizeCallback);
 
     /*
-     * Initialization of my system variables
+     * Initialization of local system variables
      */
 
     firstLocalization = true;
@@ -447,7 +448,10 @@ int main(void)
                     eye_texture[eye].OGL.Header.RenderViewport.Size.h
                     );
 
-            // Projection
+            /*
+             * Projection
+             */ 
+
             glm::mat4 projection_matrix = 
                 fromOVRMatrix4f(
                         OVR::Matrix4f(
@@ -459,7 +463,11 @@ int main(void)
                         );
 
 
-            // View
+            /*
+             * View
+             */
+
+            // Get data from the OVR
             glm::mat4 vo =
                 fromOVRMatrix4f(
                         OVR::Matrix4f(
@@ -468,21 +476,21 @@ int main(void)
                         );
 
 
-            // This is saying that the Mask frame is the same as View...
+            // Build the World -> OVR transform just once
             if (firstLocalization)
                 ovr_world = glm::inverse(vo) * mw;
 
-            
-            // view_ovr = vo;
-            view_ovr = 
-                glm::mat4_cast(
-                        glm::normalize(
-                            glm::quat_cast(
-                                mw 
-                                )
-                            )
-                        );
 
+            // Fuse the orientation data from both the optitrack and oculus
+            if (isVisible) {
+                glm::quat q_ovr = glm::normalize(glm::quat_cast(vo * ovr_world));
+                glm::quat q_opt = glm::normalize(glm::quat_cast(glm::inverse(mw)));
+                view_ovr = glm::mat4_cast(glm::mix(q_opt, q_ovr, 0.5f));
+            } else {
+                view_ovr = vo * ovr_world;
+            }
+            
+            // Construct the Matrix
             glm::mat4 view_matrix = 
                 view_ovr *
                 glm::translate(
@@ -499,13 +507,19 @@ int main(void)
                         );
 
 
-            // Model
+            /*
+             * Model
+             */ 
+
             glm::mat4 model_matrix =
                 glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)) *
                 glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 
 
-            // MVP 
+            /*
+             * MVP
+             */ 
+
             glm::mat4 mvp = 
                 projection_matrix *
                 view_matrix *
@@ -515,7 +529,10 @@ int main(void)
             glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp[0][0]);
 
 
-            // Render...
+            /*
+             * Render...
+             */
+
             glEnableVertexAttribArray(0);
             glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
