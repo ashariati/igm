@@ -1,0 +1,206 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <GL/glew.h>
+
+#include <glfw3.h>
+GLFWwindow* window;
+
+#include <glm/glm.hpp>
+
+#include <common/shader.hpp>
+#include <common/controls.hpp>
+#include <common/controls.cpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <stdlib.h>
+
+using namespace glm;
+
+int main(){
+    if (!glfwInit()) {
+        fprintf(stderr, "Failed to initialize glfw!\n");
+        return -1;
+    }
+
+    glfwWindowHint(GLFW_SAMPLES, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    window = glfwCreateWindow(1024, 768, "BEAR PLAYGROUND", NULL, NULL);
+    if (window == NULL) {
+        fprintf(stderr, "Failed to open GLFW window!\n");
+        glfwTerminate();
+        return -1;
+    }
+    glfwMakeContextCurrent(window);
+
+    glewExperimental=true;
+    if (glewInit() != GLEW_OK) {
+        fprintf(stderr, "Failed to initialize glew!\n");
+        return -1;
+    }
+
+    glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+
+    // Vertex Array Object (VAO)
+    GLuint vertex_array_id;
+    glGenVertexArrays(1, &vertex_array_id);
+    glBindVertexArray(vertex_array_id);
+
+
+    // Using transforms
+    //
+    // glm::mat4 trans = glm::translate(10.0f, 0.0f, 0.0f);
+    // glm::vec4 v_hat(10.0f, 10.0f, 10.0f, 0.0f);;
+    // glm::vec4 v_transformed = trans * v_hat;
+    //
+    // Identity Matrix
+    // glm::mat4 identity_matrix = glm::mat4(1.0f)
+    //
+    // Scaling Matrix
+    // glm::mat4 scaling_matrix = glm::scale(2.0f, 2.0f, 2.0f)
+    //
+    // Rotation
+    // glm::vec3 rotation_axis(??, ??, ??);
+    // glm::mat4 rotation_matrix = glm::rotate (angle_in_degrees, rotation_axis);
+    //
+    // Putting it all together
+    // TransformedVector = TranslationMatrix * RotationMatrix * ScaleMatrix * OriginalVector;
+
+
+    // load shaders
+    GLuint program_id = LoadShaders("simple_vertex_shader.glsl",
+            "simple_fragment_shader.glsl");
+
+
+    // get uniform handle
+    GLuint matrix_id = glGetUniformLocation(program_id, "MVP");
+
+
+    //      glm::mat4 projection = glm::perspective(
+    //              45.0f,                  // 45 degree field of view
+    //              4.0f / 3.0f,            // 4:3 aspect ratio == 800:600 == 1280:960
+    //              0.1f,                   // near clipping plane. keep large
+    //              100.0f);                // far clipping plane. keep small
+   
+    //      glm::mat4 view = glm::lookAt(
+    //              glm::vec3(4, 3, -3),     // camera position
+    //              glm::vec3(0, 0, 0),     // camera target
+    //              glm::vec3(0, 1, 0));    // up vector
+
+    //      // use identity matrix because our model is in the standard world coord.
+    //      glm::mat4 model = glm::mat4(1.0f);
+
+    //      glm::mat4 mvp = projection * view * model;
+
+    static const GLfloat g_vertex_buffer_data[] = {
+        -1.0f,-1.0f,-1.0f, // triangle 1 : begin
+        -1.0f,-1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f, // triangle 1 : end
+        1.0f, 1.0f,-1.0f, // triangle 2 : begin
+        -1.0f,-1.0f,-1.0f,
+        -1.0f, 1.0f,-1.0f, // triangle 2 : end
+        1.0f,-1.0f, 1.0f,
+        -1.0f,-1.0f,-1.0f,
+        1.0f,-1.0f,-1.0f,
+        1.0f, 1.0f,-1.0f,
+        1.0f,-1.0f,-1.0f,
+        -1.0f,-1.0f,-1.0f,
+        -1.0f,-1.0f,-1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f,-1.0f,
+        1.0f,-1.0f, 1.0f,
+        -1.0f,-1.0f, 1.0f,
+        -1.0f,-1.0f,-1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f,-1.0f, 1.0f,
+        1.0f,-1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f,-1.0f,-1.0f,
+        1.0f, 1.0f,-1.0f,
+        1.0f,-1.0f,-1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f,-1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f,-1.0f,
+        -1.0f, 1.0f,-1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f,-1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f,-1.0f, 1.0f
+    };
+
+    GLuint vertex_buffer;
+    glGenBuffers(1, &vertex_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER,
+            sizeof(g_vertex_buffer_data),
+            g_vertex_buffer_data,
+            GL_STATIC_DRAW);
+
+    static GLfloat g_color_buffer_data[12*3*3];
+    float r;
+    for (int v = 0; v < 12*3 ; v++){
+        r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        g_color_buffer_data[3*v+0] = r;
+        r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        g_color_buffer_data[3*v+1] = r;
+        r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        g_color_buffer_data[3*v+2] = r;;
+    }
+
+    GLuint color_buffer;
+    glGenBuffers(1, &color_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
+    glBufferData(GL_ARRAY_BUFFER, 
+            sizeof(g_color_buffer_data),
+            g_color_buffer_data,
+            GL_STATIC_DRAW);
+
+    // fix depth issue with triangles
+    glEnable(GL_DEPTH_TEST);
+    // accept fragment if it is close to the camera than the former one
+    glDepthFunc(GL_LESS);
+
+
+    glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+    do {
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glUseProgram(program_id);
+
+        // primary attribute
+        glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+        // secondary attribute
+        glEnableVertexAttribArray(1);
+        glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+        // keyboard input
+        computeMatricesFromInputs();
+        glm::mat4 projection_matrix = getProjectionMatrix();
+        glm::mat4 view_matrix = getViewMatrix();
+        glm::mat4 model_matrix = glm::mat4(1.0);
+        glm::mat4 mvp = projection_matrix * view_matrix * model_matrix;
+
+        // send transform to currently bound shader
+        glUniformMatrix4fv(matrix_id, 1, GL_FALSE, &mvp[0][0]);
+
+        glDrawArrays(GL_TRIANGLES, 0, 12*3);
+        glDisableVertexAttribArray(0);
+
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+
+    } while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && \
+            glfwWindowShouldClose(window) == 0);
+
+}
