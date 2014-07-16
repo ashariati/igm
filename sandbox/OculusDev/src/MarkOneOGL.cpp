@@ -46,8 +46,8 @@ std::vector<glm::vec2> uvs;
 std::vector<glm::vec3> normals;
 
 // GLFW
-const bool fullscreen = true;
-// const bool fullscreen = false;
+// const bool fullscreen = true;
+const bool fullscreen = false;
 GLFWwindow* window;
 
 // VRPN
@@ -400,8 +400,8 @@ int main(void)
     GLuint program_id = LoadShaders("../shaders/StandardShading.vertexshader",
             "../shaders/StandardShading.fragmentshader");
 
-    // bool res = loadOBJ("../assets/suzanne.obj", vertices, uvs, normals);
-    bool res = loadAssImp("../assets/suzanne.obj", indices, vertices, uvs, normals);
+    bool res = loadOBJ("../assets/can.obj", vertices, uvs, normals);
+    // bool res = loadAssImp("../assets/can.obj", indices, vertices, uvs, normals);
 
     GLuint vertex_array_id;
     glGenVertexArrays(1, &vertex_array_id);
@@ -570,7 +570,7 @@ int main(void)
             glEnableVertexAttribArray(0);
             glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-            glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+            glDrawArrays(GL_LINES, 0, vertices.size());
             glDisableVertexAttribArray(0);
 
             ovrHmd_EndEyeRender(hmd, eye, eye_pose, &eye_texture[eye].Texture);
