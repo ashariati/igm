@@ -24,6 +24,7 @@ LIBS = -L/usr/lib \
 	   -L$(LIBOVRPATH)/Lib/Linux/Release/x86_64 \
 	   -L$(GLFWPATH)/build/src \
 	   -L$(GLEWPATH)/lib \
+	   -L$(ASSIMPPATH)/build/code \
 	   -Wl -Bstatic \
 	   -lovr \
 	   -lvrpn \
@@ -40,7 +41,8 @@ LIBS = -L/usr/lib \
 	   -lm \
 	   -lpthread \
 	   -ludev \
-	   -lboost_thread-mt
+	   -lboost_thread-mt \
+	   -lassimp
 
 OBJECTS = $(OBJPATH)/MarkOneOGL.o \
 		  $(OBJPATH)/objloader.o \

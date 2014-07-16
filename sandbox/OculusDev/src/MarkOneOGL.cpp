@@ -40,13 +40,14 @@ ovrGLConfig ovr_gl_config;
 ovrEyeRenderDesc eye_render_desc[2];
 
 // OpenGL
+std::vector<unsigned short> indices;
 std::vector<glm::vec3> vertices;
 std::vector<glm::vec2> uvs;
 std::vector<glm::vec3> normals;
 
 // GLFW
-// const bool fullscreen = true;
-const bool fullscreen = false;
+const bool fullscreen = true;
+// const bool fullscreen = false;
 GLFWwindow* window;
 
 // VRPN
@@ -399,7 +400,8 @@ int main(void)
     GLuint program_id = LoadShaders("../shaders/StandardShading.vertexshader",
             "../shaders/StandardShading.fragmentshader");
 
-    bool res = loadOBJ("../assets/DemonBloodSword.obj", vertices, uvs, normals);
+    // bool res = loadOBJ("../assets/suzanne.obj", vertices, uvs, normals);
+    bool res = loadAssImp("../assets/suzanne.obj", indices, vertices, uvs, normals);
 
     GLuint vertex_array_id;
     glGenVertexArrays(1, &vertex_array_id);
@@ -520,10 +522,10 @@ int main(void)
             glm::mat4 view_matrix = 
                 // double check this translation which incorporates the 
                 // position information from the optitrack
-                glm::translate(
-                        glm::mat4(1.f),
-                        glm::vec3(mw[3]) * 3.0f
-                        ) * 
+                // glm::translate(
+                //         glm::mat4(1.f),
+                //         glm::vec3(mw[3]) * 3.0f
+                //         ) * 
                 view_ovr *
                 glm::translate(
                         glm::mat4(1.f), 
@@ -545,8 +547,7 @@ int main(void)
 
             glm::mat4 model_matrix =
                 glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)) *
-                // glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-                glm::mat4_cast(glm::quat(cos(M_PI / 4) , 1.0f, 0.0f, 0.0f));
+                glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 
 
             /*
