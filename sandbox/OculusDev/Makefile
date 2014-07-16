@@ -3,6 +3,7 @@ LIBOVRPATH = ../LibOVR
 GLFWPATH = ../glfw-3.0.4
 GLEWPATH = ../glew-1.10.0
 GLMPATH = ../glm
+ASSIMPPATH = ../assimp-3.1.1/
 
 INCPATH = -I./include \
 		  -I/usr/include \
@@ -11,7 +12,8 @@ INCPATH = -I./include \
 		  -I$(GLFWPATH)/include \
 		  -I$(LIBOVRPATH)/Include \
 		  -I$(LIBOVRPATH)/Src \
-		  -I$(VRPNPATH)
+		  -I$(VRPNPATH) \
+		  -I$(ASSIMPPATH)/include/
 
 OBJPATH = ./obj
 BINPATH = ./bin
@@ -22,12 +24,14 @@ LIBS = -L/usr/lib \
 	   -L$(LIBOVRPATH)/Lib/Linux/Release/x86_64 \
 	   -L$(GLFWPATH)/build/src \
 	   -L$(GLEWPATH)/lib \
+	   -Wl -Bstatic \
 	   -lovr \
 	   -lvrpn \
+	   -lglfw3 \
+	   -Wl -Bdynamic \
 	   -lGL \
 	   -lGLU \
 	   -lglut \
-	   -lglfw3 \
 	   -lGLEW \
 	   -lXi \
 	   -lXrandr \

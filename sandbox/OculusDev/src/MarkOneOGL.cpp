@@ -45,7 +45,8 @@ std::vector<glm::vec2> uvs;
 std::vector<glm::vec3> normals;
 
 // GLFW
-const bool fullscreen = true;
+// const bool fullscreen = true;
+const bool fullscreen = false;
 GLFWwindow* window;
 
 // VRPN
@@ -517,6 +518,12 @@ int main(void)
             
             // Construct the Matrix
             glm::mat4 view_matrix = 
+                // double check this translation which incorporates the 
+                // position information from the optitrack
+                glm::translate(
+                        glm::mat4(1.f),
+                        glm::vec3(mw[3]) * 3.0f
+                        ) * 
                 view_ovr *
                 glm::translate(
                         glm::mat4(1.f), 
