@@ -46,8 +46,8 @@ std::vector<glm::vec2> uvs;
 std::vector<glm::vec3> normals;
 
 // GLFW
-// const bool fullscreen = true;
-const bool fullscreen = false;
+const bool fullscreen = true;
+// const bool fullscreen = false;
 GLFWwindow* window;
 
 // VRPN
@@ -66,10 +66,13 @@ struct Pose {
 boost::mutex pose_mutex;
 Pose tool_pose;
 
+// We are assuming that what the rigid body being tracked by the tracking
+// system is identical to the view
 boost::mutex tf_mutex;
+glm::mat4 view_world;
 glm::mat4 view_ovr;
-glm::mat4 ovr_world;
-glm::mat4 mask_world;
+glm::mat4 world_ovr;
+glm::mat4 world_mask;
 
 bool firstLocalization;
 bool isVisible;
@@ -78,14 +81,14 @@ bool isVisible;
 void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 {
 
-    glm::mat4 mw;
+    glm::mat4 wm;
     {
         boost::mutex::scoped_lock lock(tf_mutex);
-        mw = mask_world;
+        wm = world_mask;
     }
 
     glm::vec4 tool_position = 
-        glm::inverse(mw) * 
+        glm::inverse(wm) * 
         glm::vec4(
                 (float) t.pos[0],
                 (float) t.pos[1],
@@ -101,7 +104,7 @@ void VRPN_CALLBACK toolTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 
     tp.orient = 
         glm::normalize(
-                glm::quat_cast(glm::inverse(mw)) *
+                glm::quat_cast(glm::inverse(wm)) *
                 glm::quat(
                     t.quat[3],
                     t.quat[0],
@@ -142,7 +145,7 @@ void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
      * frame and the reported orientation. 
      */
 
-    glm::quat q_mw = 
+    glm::quat q_wm = 
         glm::normalize(
                 glm::quat(
                     t.quat[3], 
@@ -153,12 +156,12 @@ void VRPN_CALLBACK oculusTrackerCallback(void* userData, const vrpn_TRACKERCB t)
 
     {
         boost::mutex::scoped_lock lock(tf_mutex);
-        mask_world = 
+        world_mask = 
             glm::translate(
                     glm::mat4(1.0f), 
                     glm::vec3(t.pos[0], t.pos[1], t.pos[2])
                     ) *
-            glm::mat4_cast(q_mw);
+            glm::mat4_cast(q_wm);
     }
 
 
@@ -426,11 +429,17 @@ int main(void)
     firstLocalization = true;
     isVisible = false;
 
-    view_ovr = glm::mat4_cast(glm::quat(0.0f, 0.0f, 1.0f, 0.0f));
-    ovr_world = glm::mat4_cast(glm::quat(0.0f, 0.0f, 1.0f, 0.0f));
-    mask_world = glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+    glm::mat4 ovr_model =
+        glm::lookAt(
+            glm::vec3(0.0f, 0.0f, 4.0f),
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f)
+            );
+    view_ovr = glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+    world_ovr = glm::mat4_cast(glm::quat(0.0f, 0.0f, 1.0f, 0.0f));
+    world_mask = glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 
-    glm::mat4 mw = mask_world;
+    glm::mat4 wm = world_mask;
 
     initVrpn();
 
@@ -455,13 +464,13 @@ int main(void)
             isVisible = 
                 glm::any(
                         glm::notEqual(
-                            glm::quat_cast(mw), 
-                            glm::quat_cast(mask_world)
+                            glm::quat_cast(wm), 
+                            glm::quat_cast(world_mask)
                             )
                         )
                 ? true : false;
 
-            mw = mask_world;
+            wm = world_mask;
         }
 
 
@@ -506,39 +515,45 @@ int main(void)
 
             // Build the World -> OVR transform just once
             if (firstLocalization)
-                ovr_world = glm::inverse(vo) * mw;
+                world_ovr = glm::inverse(wm) * vo;
 
 
             // Fuse the orientation data from both the optitrack and oculus
             if (isVisible) {
-                glm::quat q_ovr = glm::normalize(glm::quat_cast(vo * ovr_world));
-                glm::quat q_opt = glm::normalize(glm::quat_cast(glm::inverse(mw)));
+                glm::quat q_ovr = 
+                    glm::normalize(
+                            glm::quat_cast(vo)
+                            );
+                glm::quat q_opt = 
+                    glm::normalize(
+                        glm::quat_cast(glm::inverse(wm) * world_ovr)
+                        );
+
                 view_ovr = glm::mat4_cast(glm::mix(q_opt, q_ovr, 0.5f));
             } else {
-                view_ovr = vo * ovr_world;
+                view_ovr = vo;
             }
+
+            // Extract translational component of the transformation
+            glm::vec3 view_adjust = 
+                glm::vec3(
+                        eye_render_desc[eye].ViewAdjust.x,
+                        eye_render_desc[eye].ViewAdjust.y,
+                        eye_render_desc[eye].ViewAdjust.z
+                        );
+
+            glm::mat4 vo_t = 
+                glm::translate(
+                        glm::mat4(1.f),
+                        glm::vec3((glm::inverse(wm) * world_ovr)[3]) 
+                        + view_adjust
+                        );
             
             // Construct the Matrix
             glm::mat4 view_matrix = 
-                // double check this translation which incorporates the 
-                // position information from the optitrack
-                // glm::translate(
-                //         glm::mat4(1.f),
-                //         glm::vec3(mw[3]) * 3.0f
-                //         ) * 
-                view_ovr *
-                glm::translate(
-                        glm::mat4(1.f), 
-                        glm::vec3(
-                            eye_render_desc[eye].ViewAdjust.x,
-                            eye_render_desc[eye].ViewAdjust.y,
-                            eye_render_desc[eye].ViewAdjust.z)
-                        ) *
-                glm::lookAt(
-                        glm::vec3(0.0f, 0.0f, 4.0f),
-                        glm::vec3(0.0f, 0.0f, 0.0f),
-                        glm::vec3(0.0f, 1.0f, 0.0f)
-                        );
+                vo_t *
+                view_ovr*
+                ovr_model;
 
 
             /*
@@ -570,7 +585,7 @@ int main(void)
             glEnableVertexAttribArray(0);
             glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-            glDrawArrays(GL_LINES, 0, vertices.size());
+            glDrawArrays(GL_TRIANGLES, 0, vertices.size());
             glDisableVertexAttribArray(0);
 
             ovrHmd_EndEyeRender(hmd, eye, eye_pose, &eye_texture[eye].Texture);
