@@ -69,10 +69,10 @@ Pose tool_pose;
 // We are assuming that what the rigid body being tracked by the tracking
 // system is identical to the view
 boost::mutex tf_mutex;
-glm::mat4 view_world;
 glm::mat4 view_ovr;
 glm::mat4 world_ovr;
 glm::mat4 world_mask;
+glm::mat4 world_model;
 
 bool firstLocalization;
 bool isVisible;
@@ -429,15 +429,16 @@ int main(void)
     firstLocalization = true;
     isVisible = false;
 
-    glm::mat4 ovr_model =
-        glm::lookAt(
-            glm::vec3(0.0f, 0.0f, 4.0f),
-            glm::vec3(0.0f, 0.0f, 0.0f),
-            glm::vec3(0.0f, 1.0f, 0.0f)
-            );
-    view_ovr = glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+    // glm::mat4 ovr_model =
+    //     glm::lookAt(
+    //         glm::vec3(0.0f, 0.0f, 4.0f),
+    //         glm::vec3(0.0f, 0.0f, 0.0f),
+    //         glm::vec3(0.0f, 1.0f, 0.0f)
+    //         );
+    view_ovr = glm::mat4(1.0f);
     world_ovr = glm::mat4_cast(glm::quat(0.0f, 0.0f, 1.0f, 0.0f));
-    world_mask = glm::mat4_cast(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+    world_mask = glm::mat4(1.0f);
+    world_model = glm::mat4(1.0f);
 
     glm::mat4 wm = world_mask;
 
@@ -515,23 +516,24 @@ int main(void)
 
             // Build the World -> OVR transform just once
             if (firstLocalization)
-                world_ovr = glm::inverse(wm) * vo;
+                world_ovr = wm * vo;
 
 
+            glm::mat4 view_world;
             // Fuse the orientation data from both the optitrack and oculus
             if (isVisible) {
                 glm::quat q_ovr = 
                     glm::normalize(
-                            glm::quat_cast(vo)
+                            glm::quat_cast(vo * glm::inverse(world_ovr))
                             );
                 glm::quat q_opt = 
                     glm::normalize(
-                        glm::quat_cast(glm::inverse(wm) * world_ovr)
+                        glm::quat_cast(glm::inverse(wm))
                         );
 
-                view_ovr = glm::mat4_cast(glm::mix(q_opt, q_ovr, 0.5f));
+                view_world = glm::mat4_cast(glm::mix(q_opt, q_ovr, 0.5f));
             } else {
-                view_ovr = vo;
+                view_world = vo * glm::inverse(world_ovr);
             }
 
             // Extract translational component of the transformation
@@ -545,15 +547,15 @@ int main(void)
             glm::mat4 vo_t = 
                 glm::translate(
                         glm::mat4(1.f),
-                        glm::vec3((glm::inverse(wm) * world_ovr)[3]) 
+                        glm::vec3((glm::inverse(wm))[3]) 
                         + view_adjust
                         );
             
             // Construct the Matrix
             glm::mat4 view_matrix = 
                 vo_t *
-                view_ovr*
-                ovr_model;
+                view_world *
+                world_model;
 
 
             /*
