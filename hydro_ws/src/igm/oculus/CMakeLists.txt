@@ -13,6 +13,13 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
+find_package(OpenGL REQUIRED)
+set(GL_LIBRARY
+    GL
+    GLU
+    X11
+    Xrandr
+    )
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -98,9 +105,16 @@ include_directories(
     ${catkin_INCLUDE_DIRS}
     LibOVR/Include
     LibOVR/Src
+    glfw-3.0.4/include
+    glew-1.10.0/include
     )
 
 link_directories(LibOVR/Lib/Linux/Debug/x86_64)
+
+add_subdirectory(glfw-3.0.4)
+link_directories(glfw-3.0.4/build/src)
+
+link_directories(glew-1.10.0/lib)
 
 ## Declare a cpp library
 # add_library(oculus
@@ -121,12 +135,13 @@ add_executable(oculus_node src/oculus_node.cpp)
 # )
 
 target_link_libraries(oculus_node
-    ovr
-    GL
-    udev
-    Xrandr
-    X11
     ${catkin_LIBRARIES}
+    ovr
+    udev
+    glfw3
+    ${GL_LIBRARIES}
+    GLEW
+    ${GLFW_LIBRARIES}
     )
 
 #############
