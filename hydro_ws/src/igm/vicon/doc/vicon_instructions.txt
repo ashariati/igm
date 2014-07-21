@@ -1,0 +1,15 @@
+Instructions for Real Time Vicon Tracking
+
+Vicon:
+1. Start the ViconIQ software on the vicon workstation
+2. Turn on the cameras by flipping the on/off switch located on the back of the box underneath the workstation monitor
+3. Make sure the grey ethernet cable is connected to both the vicon workstation computer and the ARM-s workstation computer
+3. Under the 'data management' tab select the appropriate project and session. Currently the model files are located in 'ARMS' capture day 2 sessions 1 (double check this)
+4. Under 'capture' tab, click on the 'active objects' tab on the right side of the screen. Select the models you wish to track. Then select them in the box on the left side of the screen.
+5. Connect to the Real Time Engine by clicking the button with two red triangles on the bottom of the screen. The two circles on the bottom of the screen should turn green, otherwise something is not working.
+
+ARM-S workstation:
+1. Launch vicon node by typing:
+roslaunch vicon vicon
+2. This will publish two topics: /vicon/names and /vicon/values. /vicon/names is an array of strings which let you know what data is being output from the vicon. /vicon/values contains the values that correspond to each name, in the order that the names appear. 
+3. Enjoy. 
