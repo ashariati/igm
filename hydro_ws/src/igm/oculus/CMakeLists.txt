@@ -106,19 +106,19 @@ include_directories(
     include
     ${catkin_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
-    libs/LibOVR/Include
-    libs/LibOVR/Src
-    libs/glfw-3.0.4/include
-    libs/glew-1.10.0/include
-    libs/glm
+    lib/LibOVR/Include
+    lib/LibOVR/Src
+    lib/glfw-3.0.4/include
+    lib/glew-1.10.0/include
+    lib/glm
     )
 
-link_directories(libs/LibOVR/Lib/Linux/Debug/x86_64)
+link_directories(lib/LibOVR/Lib/Linux/Debug/x86_64)
 
-add_subdirectory(libs/glfw-3.0.4)
-link_directories(libs/glfw-3.0.4/build/src)
+add_subdirectory(lib/glfw-3.0.4)
+link_directories(lib/glfw-3.0.4/build/src)
 
-link_directories(libs/glew-1.10.0/lib)
+link_directories(lib/glew-1.10.0/lib)
 
 
 ## Declare a cpp library
