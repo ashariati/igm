@@ -1,28 +1,20 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(oculus)
+project(vicon_msgs)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-    roscpp
-    rospy
-    std_msgs
-    vicon_msgs
-    )
+  geometry_msgs
+  roscpp
+  rospy
+  std_msgs
+  message_generation
+)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
-find_package(OpenGL REQUIRED)
-set(GL_LIBRARY
-    GL
-    GLU
-    X11
-    Xrandr
-    )
-
-find_package(Boost REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -54,11 +46,13 @@ find_package(Boost REQUIRED)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+    FILES
+    Names.msg
+    State.msg
+    Subject.msg
+    Values.msg
+    )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -75,10 +69,11 @@ find_package(Boost REQUIRED)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+generate_messages(
+    DEPENDENCIES
+    std_msgs
+    geometry_msgs
+    )
 
 ###################################
 ## catkin specific configuration ##
@@ -90,9 +85,9 @@ find_package(Boost REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-    INCLUDE_DIRS include
-    LIBRARIES oculus
-    CATKIN_DEPENDS roscpp rospy std_msgs vicon_msgs
+    # INCLUDE_DIRS include
+    # LIBRARIES vicon_msgs
+    CATKIN_DEPENDS geometry_msgs roscpp rospy std_msgs message_runtime
     # DEPENDS system_lib
     )
 
@@ -104,58 +99,25 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
-    include
-    ${catkin_INCLUDE_DIRS}
-    ${Boost_INCLUDE_DIRS}
-    lib/LibOVR/Include
-    lib/LibOVR/Src
-    lib/glfw-3.0.4/include
-    lib/glew-1.10.0/include
-    lib/glm
-    )
-
-link_directories(lib/LibOVR/Lib/Linux/Debug/x86_64)
-
-add_subdirectory(lib/glfw-3.0.4)
-link_directories(lib/glfw-3.0.4/build/src)
-
-link_directories(lib/glew-1.10.0/lib)
-
-
-## Declare a cpp library
-# add_library(oculus
-#   src/${PROJECT_NAME}/oculus.cpp
-# )
-
-add_library(oculus_utilities
-  src/shader.cpp include/oculus/shader.hpp
-  src/objloader.cpp include/oculus/objloader.hpp
+  ${catkin_INCLUDE_DIRS}
 )
 
+## Declare a cpp library
+# add_library(vicon_msgs
+#   src/${PROJECT_NAME}/vicon_msgs.cpp
+# )
+
 ## Declare a cpp executable
-# add_executable(oculus_node src/oculus_node.cpp)
-add_executable(oculus_node src/oculus_node.cpp)
+# add_executable(vicon_msgs_node src/vicon_msgs_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(oculus_node oculus_generate_messages_cpp)
+# add_dependencies(vicon_msgs_node vicon_msgs_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(oculus_node
+# target_link_libraries(vicon_msgs_node
 #   ${catkin_LIBRARIES}
 # )
-
-target_link_libraries(oculus_node
-    ${catkin_LIBRARIES}
-    ${Boost_LIBRARIES}
-    oculus_utilities
-    ovr
-    udev
-    glfw3
-    ${GL_LIBRARIES}
-    GLEW
-    ${GLFW_LIBRARIES}
-    )
 
 #############
 ## Install ##
@@ -172,7 +134,7 @@ target_link_libraries(oculus_node
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS oculus oculus_node
+# install(TARGETS vicon_msgs vicon_msgs_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -197,7 +159,7 @@ target_link_libraries(oculus_node
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_oculus.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_vicon_msgs.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

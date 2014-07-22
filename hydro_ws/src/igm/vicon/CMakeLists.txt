@@ -8,8 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
     roscpp
     rospy
     std_msgs
-    geometry_msgs
-    message_generation
+    vicon_msgs
     )
 
 ## System dependencies are found with CMake's conventions
@@ -46,13 +45,11 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-    FILES
-    Names.msg
-    State.msg
-    Subject.msg
-    Values.msg
-    )
+# add_message_files(
+#     FILES
+#     Message1.msg
+#     Message2.msg
+#     )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -69,11 +66,10 @@ add_message_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-    DEPENDENCIES
-    std_msgs
-    geometry_msgs
-    )
+# generate_messages(
+#     DEPENDENCIES
+#     std_msgs
+#     )
 
 ###################################
 ## catkin specific configuration ##
@@ -87,7 +83,7 @@ generate_messages(
 catkin_package(
     INCLUDE_DIRS include
     LIBRARIES vicon
-    CATKIN_DEPENDS roscpp rospy std_msgs geometry_msgs message_runtime
+    CATKIN_DEPENDS roscpp rospy std_msgs vicon_msgs
     DEPENDS system_lib
     )
 

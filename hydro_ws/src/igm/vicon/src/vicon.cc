@@ -2,12 +2,12 @@
 #include <vector>
 #include <ros/ros.h>
 
-#include <vicon/Names.h>
-#include <vicon/Values.h>
+#include <vicon_msgs/Names.h>
+#include <vicon_msgs/Values.h>
 #include <vicon/ViconDriver.h>
 
 ros::Publisher pub_names;
-vicon::Names names_msg;
+vicon_msgs::Names names_msg;
 
 void names_callback(const ros::TimerEvent& e)
 {
@@ -20,12 +20,12 @@ int main(int argc, char** argv)
 
   ros::NodeHandle n("~");
 
-  pub_names = n.advertise<vicon::Names>("names", 100);
+  pub_names = n.advertise<vicon_msgs::Names>("names", 100);
 
   ros::Publisher pub_values
-    = n.advertise<vicon::Values>("values", 100);
+    = n.advertise<vicon_msgs::Values>("values", 100);
 
-  vicon::Values values_msg;
+  vicon_msgs::Values values_msg;
   n.param("frame_id", values_msg.header.frame_id, 
           string("vicon"));
   
