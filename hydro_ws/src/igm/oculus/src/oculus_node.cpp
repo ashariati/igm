@@ -22,6 +22,9 @@
 #include <oculus/shader.hpp>
 #include <oculus/objloader.hpp>
 
+#include <vicon_msgs/Names.h>
+#include <vicon_msgs/Values.h>
+
 // Oculus
 ovrHmd hmd;
 ovrHmdDesc hmd_desc;
@@ -52,6 +55,28 @@ glm::mat4 world_model;
 bool fullscreen;
 std::string shaders_path;
 std::string assets_path;
+
+// Localization
+bool locInit;
+int rootIndex;
+
+void valuesCallback(const vicon_msgs::Values::ConstPtr& msg) {
+    ROS_INFO("Values Callback");
+}
+
+void namesCallback(const vicon_msgs::Names::ConstPtr& msg) {
+
+    std::string key = std::string("Oculus:Root <A-X>");
+
+    for(int i = 0; i < msg->names.size(); i++) {
+        if(!(key.compare(msg->names[i]))) {
+            rootIndex = i;
+            ROS_ERROR("%d", i);
+        }
+    }
+
+    locInit = true;
+}
 
 glm::mat4 fromOVRMatrix4f(const OVR::Matrix4f &in) 
 {
@@ -163,6 +188,12 @@ int main(int argc, char** argv) {
 
     ros::NodeHandle nh("~");
 
+    std::string names_topic;
+    ros::Subscriber names_sub;
+
+    std::string values_topic;
+    ros::Subscriber values_sub;
+
     ///////////////// ROS Parameters //////////////////
 
     nh.param("fullscreen", fullscreen, true);
@@ -178,6 +209,17 @@ int main(int argc, char** argv) {
             assets_path,
             std::string("/home/vrwall/REU_Summer_2014/hydro_ws/src/igm/oculus/assets")
             );
+
+    nh.param("names_topic", names_topic, std::string("/vicon/names"));
+    nh.param("values_topic", values_topic, std::string("/vicon/values"));
+
+    ////////////////// Tracking Initialization ////////////////////
+
+    locInit = false;
+    names_sub = nh.subscribe(names_topic, 10, namesCallback);
+    while(!locInit && ros::ok())
+        ros::spinOnce();
+    names_sub.shutdown();
 
     ///////////// Initialization Routines ////////////////
 
@@ -338,6 +380,10 @@ int main(int argc, char** argv) {
     view_ovr = glm::mat4(1.0f);
     world_ovr = glm::mat4(1.0f);
     world_model = glm::mat4(1.0f);
+
+    ////////////////// Subscribers ////////////////////////
+
+    values_sub = nh.subscribe(values_topic, 10, valuesCallback);
 
     ros::Rate loop_rate(60);
     while(ros::ok()) {
