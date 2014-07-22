@@ -99,6 +99,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
+    include
     ${catkin_INCLUDE_DIRS}
     )
 
@@ -107,17 +108,25 @@ include_directories(
 #   src/${PROJECT_NAME}/vicon.cpp
 # )
 
+add_library(vicon_libraries
+    src/ViconDriver.cc
+    src/SerialDevice.cc
+    src/SerialDeviceReader.cc
+)
+
 ## Declare a cpp executable
 # add_executable(vicon_node src/vicon_node.cpp)
+add_executable(vicon src/vicon.cc)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(vicon_node vicon_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(vicon_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(vicon
+  ${catkin_LIBRARIES}
+  vicon_libraries
+)
 
 #############
 ## Install ##

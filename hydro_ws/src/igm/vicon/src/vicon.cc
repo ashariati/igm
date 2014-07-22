@@ -4,7 +4,7 @@
 
 #include <vicon/Names.h>
 #include <vicon/Values.h>
-#include "ViconDriver.h"
+#include <vicon/ViconDriver.h>
 
 ros::Publisher pub_names;
 vicon::Names names_msg;

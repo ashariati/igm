@@ -32,7 +32,7 @@
 
 */
 
-#include "SerialDevice.h"
+#include <vicon/SerialDevice.h>
 
 //constructor
 SerialDevice::SerialDevice()

@@ -32,7 +32,7 @@
 
 */
 
-#include "SerialDeviceReader.h"
+#include <vicon/SerialDeviceReader.h>
 
 SerialDeviceReader::SerialDeviceReader(int buffer_length, int num_buffers)
 {

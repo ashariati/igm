@@ -13,7 +13,7 @@
 
 */
 
-#include "ViconDriver.h"
+#include <vicon/ViconDriver.h>
 
 ViconDriver::ViconDriver(unsigned int buffer_length,
                          unsigned int num_buffers, bool stream) : SerialDeviceReader(buffer_length,
