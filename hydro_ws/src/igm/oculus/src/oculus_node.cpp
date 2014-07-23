@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <signal.h>
+#include <math.h>
 
 #include <GL/glew.h>
 
@@ -61,7 +62,34 @@ bool locInit;
 int rootIndex;
 
 void valuesCallback(const vicon_msgs::Values::ConstPtr& msg) {
-    ROS_INFO("Values Callback");
+
+    float ax = msg->values[rootIndex];
+    float ay = msg->values[rootIndex + 1];
+    float az = msg->values[rootIndex + 2];
+    
+    float xt = msg->values[rootIndex + 3];
+    float yt = msg->values[rootIndex + 4];
+    float zt = msg->values[rootIndex + 5];
+
+    float theta = sqrt(ax*ax + ay*ay + az*az);
+    float ax_ = ax / theta;
+    float ay_ = ay / theta;
+    float az_ = az / theta;
+
+    glm::quat q = glm::normalize(glm::quat(cos(theta / 2), ax_, ay_, az_));
+    
+    glm::mat4 M = 
+        glm::translate(glm::mat4(1.0f), glm::vec3(xt, yt, zt)) *
+        glm::mat4_cast(q);
+
+    // ROS_INFO("%f, %f, %f, %f", theta, q[0], q[1], q[2]);
+    // ROS_INFO("%f, %f, %f", xt, yt, zt);
+
+    {
+        boost::mutex::scoped_lock lock(tf_mutex);
+        world_mask = M;
+    }
+
 }
 
 void namesCallback(const vicon_msgs::Names::ConstPtr& msg) {
