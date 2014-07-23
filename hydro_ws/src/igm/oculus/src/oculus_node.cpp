@@ -44,6 +44,10 @@ std::vector<glm::vec3> vertices;
 std::vector<glm::vec2> uvs;
 std::vector<glm::vec3> normals;
 
+const float trapezoid_w = 500.0f;
+const float trapezoid_h = 2000.0f;
+std::vector<glm::vec3> model_vertices;
+
 // Transforms
 boost::mutex tf_mutex;
 glm::mat4 view_mask;
@@ -72,18 +76,22 @@ void valuesCallback(const vicon_msgs::Values::ConstPtr& msg) {
     float zt = msg->values[rootIndex + 5];
 
     float theta = sqrt(ax*ax + ay*ay + az*az);
-    float ax_ = ax / theta;
-    float ay_ = ay / theta;
-    float az_ = az / theta;
+    float scale = 1.0;
 
-    glm::quat q = glm::normalize(glm::quat(cos(theta / 2), ax_, ay_, az_));
-    
+    if (theta > 0.0) scale = sin(theta/2) / theta;
+
+    glm::quat q = glm::normalize(glm::quat(cos(theta/2), scale*ax, scale*ay, scale*az));
     glm::mat4 M = 
         glm::translate(glm::mat4(1.0f), glm::vec3(xt, yt, zt)) *
         glm::mat4_cast(q);
 
-    // ROS_INFO("%f, %f, %f, %f", theta, q[0], q[1], q[2]);
-    // ROS_INFO("%f, %f, %f", xt, yt, zt);
+    // glm::quat q = glm::normalize(glm::quat(cos(M_PI / 8), 0.0f, 0.0f, -sin(M_PI / 8)));
+    // glm::mat4 M = 
+    //     glm::translate(glm::mat4(1.0f), glm::vec3(-2000.0f, 0.0f, 500.0f)) *
+    //     glm::mat4_cast(q);
+
+    ROS_INFO("%f, %f, %f, %f", theta, q[0], q[1], q[2]);
+    ROS_INFO("%f, %f, %f", xt, yt, zt);
 
     {
         boost::mutex::scoped_lock lock(tf_mutex);
@@ -377,11 +385,41 @@ int main(int argc, char** argv) {
 
     /////////////////////// Load Assets ////////////////////////
 
-    std::string test_object =
-        assets_path + std::string("/suzanne.obj");
-    if (!loadOBJ(test_object.c_str(), vertices, uvs, normals)) {
-        ROS_ERROR("Cannot load object");
-    }
+    //      std::string test_object =
+    //          assets_path + std::string("/suzanne.obj");
+    //      if (!loadOBJ(test_object.c_str(), vertices, uvs, normals)) {
+    //          ROS_ERROR("Cannot load object");
+    //      }
+
+    // model_vertices.push_back(glm::vec3(trapezoid_w, 0.0f, trapezoid_w));
+    // model_vertices.push_back(glm::vec3(-trapezoid_w, 0.0f, trapezoid_w));
+    // model_vertices.push_back(glm::vec3(-trapezoid_w, 0.0f, -trapezoid_w));
+    // model_vertices.push_back(glm::vec3(trapezoid_w, 0.0f, -trapezoid_w));
+    // model_vertices.push_back(glm::vec3(0.0f, trapezoid_h, 0.0f));
+
+    model_vertices.push_back(glm::vec3(trapezoid_w, trapezoid_w, 0.0f));
+    model_vertices.push_back(glm::vec3(-trapezoid_w, trapezoid_w, 0.0f));
+    model_vertices.push_back(glm::vec3(-trapezoid_w, -trapezoid_w, 0.0f));
+    model_vertices.push_back(glm::vec3(trapezoid_w, -trapezoid_w, 0.0f));
+    model_vertices.push_back(glm::vec3(0.0f, 0.0f, trapezoid_h));
+
+    vertices.push_back(model_vertices[0]);
+    vertices.push_back(model_vertices[1]);
+    vertices.push_back(model_vertices[1]);
+    vertices.push_back(model_vertices[2]);
+    vertices.push_back(model_vertices[2]);
+    vertices.push_back(model_vertices[3]);
+    vertices.push_back(model_vertices[3]);
+    vertices.push_back(model_vertices[0]);
+    vertices.push_back(model_vertices[0]);
+    vertices.push_back(model_vertices[4]);
+    vertices.push_back(model_vertices[1]);
+    vertices.push_back(model_vertices[4]);
+    vertices.push_back(model_vertices[2]);
+    vertices.push_back(model_vertices[4]);
+    vertices.push_back(model_vertices[3]);
+    vertices.push_back(model_vertices[4]);
+
 
     ////////////////// Buffer Initialization ///////////////
     
@@ -403,7 +441,13 @@ int main(int argc, char** argv) {
 
     //////////////// Initialize Transforms ///////////////
 
-    view_mask = glm::mat4(1.0f);
+    // Column Wise Initialization
+    view_mask = glm::mat4(
+            0, 0, -1, 0,
+            -1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 0, 1);
+
     world_mask = glm::mat4(1.0f);
     view_ovr = glm::mat4(1.0f);
     world_ovr = glm::mat4(1.0f);
@@ -451,8 +495,8 @@ int main(int argc, char** argv) {
                         OVR::Matrix4f(
                             ovrMatrix4f_Projection(
                                 eye_render_desc[eye].Fov, 
-                                0.3f, 
-                                100.0f, 
+                                50.0f, 
+                                5000.0f, 
                                 true)).Transposed()
                         );
 
@@ -460,12 +504,12 @@ int main(int argc, char** argv) {
 
 
             // Get data from the OVR
-            glm::mat4 vo =
-                fromOVRMatrix4f(
-                        OVR::Matrix4f(
-                            OVR::Quatf(eye_pose.Orientation)
-                            )
-                        );
+            //      glm::mat4 vo =
+            //          fromOVRMatrix4f(
+            //                  OVR::Matrix4f(
+            //                      OVR::Quatf(eye_pose.Orientation)
+            //                      )
+            //                  );
 
 
             // Extract translational component of the transformation
@@ -483,24 +527,32 @@ int main(int argc, char** argv) {
                         );
             
             // Construct the Matrix
-            glm::mat4 view_matrix = 
-                vo_t *
-                vo;
+            //      glm::mat4 view_matrix = 
+            //          vo_t *
+            //          vo;
+
+
 
             //////////////// Model ////////////
 
 
             glm::mat4 model_matrix = 
-                glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f));
+                glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -5.0f, -20.0f));
 
 
             //////////// Cumulative Transform /////////
 
 
+            // glm::mat4 mvp = 
+            //     projection_matrix *
+            //     view_matrix *
+            //     model_matrix;
+
             glm::mat4 mvp = 
                 projection_matrix *
-                view_matrix *
-                model_matrix;
+                vo_t *
+                view_mask *
+                glm::inverse(world_mask);
 
 
             ///////////// Passing to shader pipeline //////////
