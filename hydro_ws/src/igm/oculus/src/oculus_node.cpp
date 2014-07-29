@@ -54,6 +54,8 @@ glm::mat4 view_ovr;
 glm::mat4 world_ovr;
 glm::mat4 world_model;
 
+glm::mat4 world_wiimote;
+
 // Params
 bool fullscreen;
 std::string shaders_path;
@@ -63,29 +65,28 @@ std::string assets_path;
 bool locInit;
 int rootIndex;
 
-// My Shapes
+glm::mat4 toMat4(const vicon_msgs::Values::ConstPtr& msg, int idx) {
 
-
-const float trapezoid_w = 500.0f;
-const float trapezoid_h = 2000.0f;
-std::vector<glm::vec3> model_vertices;
-
-void valuesCallback(const vicon_msgs::Values::ConstPtr& msg) {
-
-    float ax = msg->values[rootIndex];
-    float ay = msg->values[rootIndex + 1];
-    float az = msg->values[rootIndex + 2];
+    float ax = msg->values[idx];
+    float ay = msg->values[idx + 1];
+    float az = msg->values[idx + 2];
     
-    float xt = msg->values[rootIndex + 3];
-    float yt = msg->values[rootIndex + 4];
-    float zt = msg->values[rootIndex + 5];
+    float xt = msg->values[idx + 3];
+    float yt = msg->values[idx + 4];
+    float zt = msg->values[idx + 5];
 
     float theta = sqrt(ax*ax + ay*ay + az*az);
     float scale = 1.0;
 
     if (theta > 0.0) scale = sin(theta/2) / theta;
 
-    glm::quat q = glm::normalize(glm::quat(cos(theta/2), scale*ax, scale*ay, scale*az));
+    glm::quat q = 
+        glm::normalize(
+                glm::quat(
+                    cos(theta/2), scale*ax, scale*ay, scale*az
+                    )
+                );
+
     glm::mat4 M = 
         glm::translate(glm::mat4(1.0f), glm::vec3(xt, yt, zt)) *
         glm::mat4_cast(q);
@@ -93,9 +94,19 @@ void valuesCallback(const vicon_msgs::Values::ConstPtr& msg) {
     // ROS_INFO("%f, %f, %f, %f", theta, q[0], q[1], q[2]);
     // ROS_INFO("%f, %f, %f", xt, yt, zt);
 
+
+    return M;
+}
+
+void valuesCallback(const vicon_msgs::Values::ConstPtr& msg) {
+
+    glm::mat4 M_oculus = toMat4(msg, rootIndex);
+    glm::mat4 M_wiimote = toMat4(msg, rootIndex + 6);
+
     {
         boost::mutex::scoped_lock lock(tf_mutex);
-        world_mask = M;
+        world_mask = M_oculus;
+        world_wiimote = M_wiimote;
     }
 
 }
@@ -105,9 +116,9 @@ void namesCallback(const vicon_msgs::Names::ConstPtr& msg) {
     std::string key = std::string("Oculus:Root <A-X>");
 
     for(int i = 0; i < msg->names.size(); i++) {
+        ROS_ERROR("%s", msg->names[i].c_str());
         if(!(key.compare(msg->names[i]))) {
             rootIndex = i;
-            ROS_ERROR("%d", i);
         }
     }
 
