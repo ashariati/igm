@@ -16,6 +16,7 @@ class TransformStack {
         void push(glm::mat4 M);
         glm::mat4 pop();
         glm::mat4 computeTransform();
+        void clear();
 
         static TransformStack& getInstance() {
             static TransformStack instance; 

@@ -22,6 +22,8 @@
 
 #include <oculus/shader.hpp>
 #include <oculus/objloader.hpp>
+#include <oculus/simple_shape.h>
+#include <oculus/transform_stack.h>
 
 #include <vicon_msgs/Names.h>
 #include <vicon_msgs/Values.h>
@@ -44,10 +46,6 @@ std::vector<glm::vec3> vertices;
 std::vector<glm::vec2> uvs;
 std::vector<glm::vec3> normals;
 
-const float trapezoid_w = 500.0f;
-const float trapezoid_h = 2000.0f;
-std::vector<glm::vec3> model_vertices;
-
 // Transforms
 boost::mutex tf_mutex;
 glm::mat4 view_mask;
@@ -64,6 +62,13 @@ std::string assets_path;
 // Localization
 bool locInit;
 int rootIndex;
+
+// My Shapes
+
+
+const float trapezoid_w = 500.0f;
+const float trapezoid_h = 2000.0f;
+std::vector<glm::vec3> model_vertices;
 
 void valuesCallback(const vicon_msgs::Values::ConstPtr& msg) {
 
@@ -85,13 +90,8 @@ void valuesCallback(const vicon_msgs::Values::ConstPtr& msg) {
         glm::translate(glm::mat4(1.0f), glm::vec3(xt, yt, zt)) *
         glm::mat4_cast(q);
 
-    // glm::quat q = glm::normalize(glm::quat(cos(M_PI / 8), 0.0f, 0.0f, -sin(M_PI / 8)));
-    // glm::mat4 M = 
-    //     glm::translate(glm::mat4(1.0f), glm::vec3(-2000.0f, 0.0f, 500.0f)) *
-    //     glm::mat4_cast(q);
-
-    ROS_INFO("%f, %f, %f, %f", theta, q[0], q[1], q[2]);
-    ROS_INFO("%f, %f, %f", xt, yt, zt);
+    // ROS_INFO("%f, %f, %f, %f", theta, q[0], q[1], q[2]);
+    // ROS_INFO("%f, %f, %f", xt, yt, zt);
 
     {
         boost::mutex::scoped_lock lock(tf_mutex);
@@ -391,35 +391,8 @@ int main(int argc, char** argv) {
     //          ROS_ERROR("Cannot load object");
     //      }
 
-    // model_vertices.push_back(glm::vec3(trapezoid_w, 0.0f, trapezoid_w));
-    // model_vertices.push_back(glm::vec3(-trapezoid_w, 0.0f, trapezoid_w));
-    // model_vertices.push_back(glm::vec3(-trapezoid_w, 0.0f, -trapezoid_w));
-    // model_vertices.push_back(glm::vec3(trapezoid_w, 0.0f, -trapezoid_w));
-    // model_vertices.push_back(glm::vec3(0.0f, trapezoid_h, 0.0f));
 
-    model_vertices.push_back(glm::vec3(trapezoid_w, trapezoid_w, 0.0f));
-    model_vertices.push_back(glm::vec3(-trapezoid_w, trapezoid_w, 0.0f));
-    model_vertices.push_back(glm::vec3(-trapezoid_w, -trapezoid_w, 0.0f));
-    model_vertices.push_back(glm::vec3(trapezoid_w, -trapezoid_w, 0.0f));
-    model_vertices.push_back(glm::vec3(0.0f, 0.0f, trapezoid_h));
-
-    vertices.push_back(model_vertices[0]);
-    vertices.push_back(model_vertices[1]);
-    vertices.push_back(model_vertices[1]);
-    vertices.push_back(model_vertices[2]);
-    vertices.push_back(model_vertices[2]);
-    vertices.push_back(model_vertices[3]);
-    vertices.push_back(model_vertices[3]);
-    vertices.push_back(model_vertices[0]);
-    vertices.push_back(model_vertices[0]);
-    vertices.push_back(model_vertices[4]);
-    vertices.push_back(model_vertices[1]);
-    vertices.push_back(model_vertices[4]);
-    vertices.push_back(model_vertices[2]);
-    vertices.push_back(model_vertices[4]);
-    vertices.push_back(model_vertices[3]);
-    vertices.push_back(model_vertices[4]);
-
+    simple_shape::Pyramid pyramid;
 
     ////////////////// Buffer Initialization ///////////////
     
@@ -428,13 +401,6 @@ int main(int argc, char** argv) {
     glGenVertexArrays(1, &vertex_array_id);
     glBindVertexArray(vertex_array_id);
 
-    glGenBuffers(1, &vertex_buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER,
-            vertices.size() * sizeof(glm::vec3),
-            &vertices[0],
-            GL_STATIC_DRAW);
-
     ////////////////// Shader Uniforms /////////////////
     
     GLuint mvp_id = glGetUniformLocation(program_id, "MVP");
@@ -442,11 +408,14 @@ int main(int argc, char** argv) {
     //////////////// Initialize Transforms ///////////////
 
     // Column Wise Initialization
-    view_mask = glm::mat4(
+    view_mask = 
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -20.0f, -80.0f)) *
+        glm::mat4(
             0, 0, -1, 0,
             -1, 0, 0, 0,
             0, 1, 0, 0,
-            0, 0, 0, 1);
+            0, 0, 0, 1
+            );
 
     world_mask = glm::mat4(1.0f);
     view_ovr = glm::mat4(1.0f);
@@ -499,6 +468,8 @@ int main(int argc, char** argv) {
                                 5000.0f, 
                                 true)).Transposed()
                         );
+            
+            TransformStack::getInstance().push(projection_matrix);
 
             ///////////// View /////////////////
 
@@ -525,34 +496,27 @@ int main(int argc, char** argv) {
                         glm::mat4(1.f),
                         view_adjust
                         );
+
+            TransformStack::getInstance().push(vo_t);
+            TransformStack::getInstance().push(view_mask);
+            TransformStack::getInstance().push(glm::inverse(world_mask));
             
-            // Construct the Matrix
-            //      glm::mat4 view_matrix = 
-            //          vo_t *
-            //          vo;
-
-
 
             //////////////// Model ////////////
 
 
-            glm::mat4 model_matrix = 
-                glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -5.0f, -20.0f));
+            // glm::mat4 model_matrix = 
+            //     glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -5.0f, -20.0f));
 
+            TransformStack::getInstance().push(
+                    glm::scale(glm::mat4(1.0f), glm::vec3(1000.0f))
+                        );
 
             //////////// Cumulative Transform /////////
 
 
-            // glm::mat4 mvp = 
-            //     projection_matrix *
-            //     view_matrix *
-            //     model_matrix;
-
-            glm::mat4 mvp = 
-                projection_matrix *
-                vo_t *
-                view_mask *
-                glm::inverse(world_mask);
+            glm::mat4 mvp = TransformStack::getInstance().computeTransform();
+            TransformStack::getInstance().clear();
 
 
             ///////////// Passing to shader pipeline //////////
@@ -560,12 +524,8 @@ int main(int argc, char** argv) {
             // Transform
             glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp[0][0]);
 
-            glEnableVertexAttribArray(0);
-            glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-            glDrawArrays(GL_LINES, 0, vertices.size());
-            glDisableVertexAttribArray(0);
-
+            // Draw shape
+            pyramid.draw();
 
             // End rendering for this eye
             ovrHmd_EndEyeRender(hmd, eye, eye_pose, &eye_texture[eye].Texture);

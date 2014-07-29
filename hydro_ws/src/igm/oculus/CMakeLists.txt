@@ -128,8 +128,10 @@ link_directories(lib/glew-1.10.0/lib)
 # )
 
 add_library(oculus_utilities
-  src/shader.cpp include/oculus/shader.hpp
-  src/objloader.cpp include/oculus/objloader.hpp
+  src/shader.cpp
+  src/objloader.cpp
+  src/transform_stack.cpp
+  src/simple_shape.cpp
 )
 
 ## Declare a cpp executable

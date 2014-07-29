@@ -40,3 +40,8 @@ glm::mat4 TransformStack::computeTransform() {
 
 }
 
+void TransformStack::clear() {
+    int len = T.size();
+    for (int i = 0; i < len; i++)
+        T.pop();
+}
