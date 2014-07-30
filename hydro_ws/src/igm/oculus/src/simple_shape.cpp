@@ -33,4 +33,18 @@ namespace simple_shape {
 
     }
 
+    Box::Box() {
+
+        for (int i = 0; i < sizeof(box_vertices); i++)
+            vertices.push_back(box_vertices[i]);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+        glBufferData(
+                GL_ARRAY_BUFFER, 
+                vertices.size(),
+                &vertices[0],
+                GL_STATIC_DRAW);
+
+    }
+
 };

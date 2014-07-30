@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <signal.h>
 #include <math.h>
+#include <cwiid.h>
 
 #include <GL/glew.h>
 
@@ -27,6 +28,9 @@
 
 #include <vicon_msgs/Names.h>
 #include <vicon_msgs/Values.h>
+
+// Wiimote
+cwiid_wiimote_t *wiimote;
 
 // Oculus
 ovrHmd hmd;
@@ -116,7 +120,7 @@ void namesCallback(const vicon_msgs::Names::ConstPtr& msg) {
     std::string key = std::string("Oculus:Root <A-X>");
 
     for(int i = 0; i < msg->names.size(); i++) {
-        ROS_ERROR("%s", msg->names[i].c_str());
+        // ROS_ERROR("%s", msg->names[i].c_str());
         if(!(key.compare(msg->names[i]))) {
             rootIndex = i;
         }
@@ -228,6 +232,18 @@ void initOvr() {
 
 }
 
+void initWii() {
+    bdaddr_t bdaddr;
+	str2ba("00:17:AB:39:4E:C5",&bdaddr);
+	ROS_INFO("Put Wiimote L in discoverable mode now (press 1+2)...");
+	if (!(wiimote = cwiid_open(&bdaddr, CWIID_FLAG_REPEAT_BTN))) {
+		ROS_ERROR("Unable to connect to wiimote");
+        cleanup(1);
+	}
+	cwiid_command(wiimote, CWIID_CMD_RPT_MODE,CWIID_RPT_BTN);
+	// cwiid_command(wiimote, CWIID_CMD_RUMBLE, 50);
+}
+
 int main(int argc, char** argv) {
 
     ros::init(argc, argv, "oculus_node");
@@ -273,6 +289,7 @@ int main(int argc, char** argv) {
     initOvr();
     initGlfw();
     initGlew();
+    // initWii();
 
     ///////////////// Set OpenGL States //////////////
     
@@ -339,8 +356,8 @@ int main(int argc, char** argv) {
 
     GLenum fbo_check = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
     if (fbo_check != GL_FRAMEBUFFER_COMPLETE) {
-        printf("There is a problem with the FBO.\n");
-        exit(EXIT_FAILURE);
+        ROS_ERROR("There is a problem with the FBO");
+        cleanup(1);
     }
 
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
@@ -404,6 +421,7 @@ int main(int argc, char** argv) {
 
 
     simple_shape::Pyramid pyramid;
+    simple_shape::Box box;
 
     ////////////////// Buffer Initialization ///////////////
     
@@ -527,7 +545,6 @@ int main(int argc, char** argv) {
 
 
             glm::mat4 mvp = TransformStack::getInstance().computeTransform();
-            TransformStack::getInstance().clear();
 
 
             ///////////// Passing to shader pipeline //////////
@@ -537,6 +554,24 @@ int main(int argc, char** argv) {
 
             // Draw shape
             pyramid.draw();
+
+            //////////////// Wiimote /////////////////
+
+            TransformStack::getInstance().pop();
+            TransformStack::getInstance().push(world_wiimote);
+            TransformStack::getInstance().push(
+                    glm::scale(glm::mat4(1.0f), glm::vec3(10.0f))
+                        );
+
+            glm::mat4 mvp2 = TransformStack::getInstance().computeTransform();
+
+            glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp2[0][0]);
+
+            box.draw();
+            
+
+            // Clear stack
+            TransformStack::getInstance().clear();
 
             // End rendering for this eye
             ovrHmd_EndEyeRender(hmd, eye, eye_pose, &eye_texture[eye].Texture);
