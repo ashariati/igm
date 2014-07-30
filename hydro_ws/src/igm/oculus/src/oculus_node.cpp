@@ -45,10 +45,6 @@ GLFWwindow* window;
 
 // OpenGL
 GLuint program_id;
-GLuint vertex_buffer;
-std::vector<glm::vec3> vertices;
-std::vector<glm::vec2> uvs;
-std::vector<glm::vec3> normals;
 
 // Transforms
 boost::mutex tf_mutex;
@@ -137,9 +133,6 @@ glm::mat4 fromOVRMatrix4f(const OVR::Matrix4f &in)
 }
 
 void cleanup(int sig) {
-    
-    // Delete buffers
-    glDeleteBuffers(1, &vertex_buffer);
 
     // Delete compiled shaders
     glDeleteProgram(program_id);
@@ -295,7 +288,6 @@ int main(int argc, char** argv) {
     
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
-    glEnable(GL_CULL_FACE);
 
     //////////// Texture parameters from OVR //////////////
     
@@ -420,8 +412,9 @@ int main(int argc, char** argv) {
     //      }
 
 
-    simple_shape::Pyramid pyramid;
-    simple_shape::Box box;
+    simple_shape::Box box(500.0f, 500.0f, 500.0f);
+    simple_shape::Box tool(150.0f, 50.0f, 50.0f);
+    simple_shape::sphere::Sphere sphere(3, 500.0f);
 
     ////////////////// Buffer Initialization ///////////////
     
@@ -537,10 +530,6 @@ int main(int argc, char** argv) {
             // glm::mat4 model_matrix = 
             //     glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -5.0f, -20.0f));
 
-            TransformStack::getInstance().push(
-                    glm::scale(glm::mat4(1.0f), glm::vec3(1000.0f))
-                        );
-
             //////////// Cumulative Transform /////////
 
 
@@ -553,21 +542,18 @@ int main(int argc, char** argv) {
             glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp[0][0]);
 
             // Draw shape
-            pyramid.draw();
+            // box.draw();
+            sphere.draw();
 
             //////////////// Wiimote /////////////////
 
-            TransformStack::getInstance().pop();
             TransformStack::getInstance().push(world_wiimote);
-            TransformStack::getInstance().push(
-                    glm::scale(glm::mat4(1.0f), glm::vec3(10.0f))
-                        );
 
             glm::mat4 mvp2 = TransformStack::getInstance().computeTransform();
 
             glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp2[0][0]);
 
-            box.draw();
+            tool.draw();
             
 
             // Clear stack
