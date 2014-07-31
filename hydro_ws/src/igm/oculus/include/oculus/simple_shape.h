@@ -28,6 +28,11 @@ namespace simple_shape {
             void bufferData();
     };
 
+    class Plane : public SimpleShape {
+        public:
+            Plane(float x=1000.0f, float y=1000.0f, int res=100);
+    };
+
     class Pyramid : public SimpleShape {
         public:
             Pyramid(float x=1.0f, float z=1.0f);

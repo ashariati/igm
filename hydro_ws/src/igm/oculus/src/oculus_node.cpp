@@ -35,11 +35,15 @@ float room_x = 5000.0f;
 float room_y = 5000.0f;
 float room_z = 5000.0f;
 
-float tool_x = 150.0f;
+float tool_x = 350.0f;
 float tool_y = 50.0f;
-float tool_z = 100.0f;
+float tool_z = 200.0f;
 
 float ball_r = 500.0f;
+
+float floor_x = 50000.0f;
+float floor_y = 50000.0f;
+int floor_res = 50;
 
 // Wiimote
 cwiid_wiimote_t *wiimote;
@@ -67,6 +71,7 @@ glm::mat4 world_ovr;
 glm::mat4 world_model;
 
 glm::mat4 world_wiimote;
+glm::mat4 world_ball;
 
 // Params
 bool fullscreen;
@@ -426,6 +431,7 @@ int main(int argc, char** argv) {
     simple_shape::Box room(room_x, room_y, room_z);
     simple_shape::Box tool(tool_x, tool_y, tool_z);
     simple_shape::sphere::Sphere ball(3, ball_r);
+    simple_shape::Plane floor(floor_x, floor_y, floor_res);
 
     ////////////////// Buffer Initialization ///////////////
     
@@ -455,9 +461,19 @@ int main(int argc, char** argv) {
     world_ovr = glm::mat4(1.0f);
     world_model = glm::mat4(1.0f);
 
+    world_ball = 
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 600.0f, ball_r));
+
     ////////////////// Subscribers ////////////////////////
 
     values_sub = nh.subscribe(values_topic, 10, valuesCallback);
+
+    /////////////////// Dynamics Setup //////////////////
+    
+    bool wasHit = false;
+    double lastTime = glfwGetTime();
+
+    /////////////////////////////////////////////////////
 
     ros::Rate loop_rate(60);
     while(ros::ok()) {
@@ -473,7 +489,7 @@ int main(int argc, char** argv) {
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
         // Background
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Render twice, for each eye
@@ -550,13 +566,9 @@ int main(int argc, char** argv) {
             room.draw();
             TransformStack::getInstance().pop();
 
+
             ////////////////////// Ball /////////////////////////
             
-            glm::mat4 world_ball = 
-                    glm::translate(
-                        glm::mat4(1.0f), 
-                        glm::vec3(0.0f, 0.0f, ball_r)
-                        );
             
             TransformStack::getInstance().push(world_ball);
 
@@ -576,11 +588,43 @@ int main(int argc, char** argv) {
             tool.draw();
             TransformStack::getInstance().pop();
 
+
+            ////////////////////// Floor /////////////////////////
+            
+            glm::mat4 world_floor =
+                    glm::translate(
+                        glm::mat4(1.0f), 
+                        glm::vec3(0.0f, 0.0f, 1.0f)
+                        );
+
+            TransformStack::getInstance().push(world_floor);
+
+            glm::mat4 mvp4 = TransformStack::getInstance().computeTransform();
+            glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp4[0][0]);
+
+            floor.draw();
+            TransformStack::getInstance().pop();
+           
+            //////////////////// Dynamics ////////////////////
+
+            double currentTime = glfwGetTime();
+            float deltaTime = (float)(currentTime - lastTime);
+
             glm::vec3 bounds = glm::vec3(tool_x, tool_y, tool_z);
             if (hitPaddle(world_wiimote, bounds, world_ball, ball_r)) {
                 cwiid_command(wiimote, CWIID_CMD_RUMBLE, 254);
+                wasHit = true;
+
             } else {
                 cwiid_command(wiimote, CWIID_CMD_RUMBLE, 0);
+            }
+
+            if (wasHit) {
+                glm::vec3 b_pos = glm::vec3(world_ball[3]);
+                world_ball = glm::translate(
+                        glm::mat4(1.0f),
+                        glm::vec3(-1.0f*deltaTime, 0.0f, 0.0f) + b_pos
+                        );
             }
             
 
