@@ -25,9 +25,21 @@
 #include <oculus/objloader.hpp>
 #include <oculus/simple_shape.h>
 #include <oculus/transform_stack.h>
+#include <oculus/contact_model.h>
 
 #include <vicon_msgs/Names.h>
 #include <vicon_msgs/Values.h>
+
+// Shape Dimensions
+float room_x = 5000.0f;
+float room_y = 5000.0f;
+float room_z = 5000.0f;
+
+float tool_x = 150.0f;
+float tool_y = 50.0f;
+float tool_z = 100.0f;
+
+float ball_r = 500.0f;
 
 // Wiimote
 cwiid_wiimote_t *wiimote;
@@ -116,7 +128,7 @@ void namesCallback(const vicon_msgs::Names::ConstPtr& msg) {
     std::string key = std::string("Oculus:Root <A-X>");
 
     for(int i = 0; i < msg->names.size(); i++) {
-        // ROS_ERROR("%s", msg->names[i].c_str());
+        ROS_ERROR("%s", msg->names[i].c_str());
         if(!(key.compare(msg->names[i]))) {
             rootIndex = i;
         }
@@ -234,7 +246,6 @@ void initWii() {
         cleanup(1);
 	}
 	cwiid_command(wiimote, CWIID_CMD_RPT_MODE,CWIID_RPT_BTN);
-	// cwiid_command(wiimote, CWIID_CMD_RUMBLE, 50);
 }
 
 int main(int argc, char** argv) {
@@ -282,7 +293,7 @@ int main(int argc, char** argv) {
     initOvr();
     initGlfw();
     initGlew();
-    // initWii();
+    initWii();
 
     ///////////////// Set OpenGL States //////////////
     
@@ -412,9 +423,9 @@ int main(int argc, char** argv) {
     //      }
 
 
-    simple_shape::Box box(500.0f, 500.0f, 500.0f);
-    simple_shape::Box tool(150.0f, 50.0f, 50.0f);
-    simple_shape::sphere::Sphere sphere(3, 500.0f);
+    simple_shape::Box room(room_x, room_y, room_z);
+    simple_shape::Box tool(tool_x, tool_y, tool_z);
+    simple_shape::sphere::Sphere ball(3, ball_r);
 
     ////////////////// Buffer Initialization ///////////////
     
@@ -493,7 +504,7 @@ int main(int argc, char** argv) {
             
             TransformStack::getInstance().push(projection_matrix);
 
-            ///////////// View /////////////////
+            ///////////// General Transforms /////////////////
 
 
             // Get data from the OVR
@@ -522,39 +533,58 @@ int main(int argc, char** argv) {
             TransformStack::getInstance().push(vo_t);
             TransformStack::getInstance().push(view_mask);
             TransformStack::getInstance().push(glm::inverse(world_mask));
+
+            ////////////////////// Room /////////////////////////
             
+            glm::mat4 world_room =
+                    glm::translate(
+                        glm::mat4(1.0f), 
+                        glm::vec3(0.0f, 0.0f, room_z / 2)
+                        );
 
-            //////////////// Model ////////////
-
-
-            // glm::mat4 model_matrix = 
-            //     glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -5.0f, -20.0f));
-
-            //////////// Cumulative Transform /////////
-
+            TransformStack::getInstance().push(world_room);
 
             glm::mat4 mvp = TransformStack::getInstance().computeTransform();
-
-
-            ///////////// Passing to shader pipeline //////////
-
-            // Transform
             glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp[0][0]);
 
-            // Draw shape
-            // box.draw();
-            sphere.draw();
+            room.draw();
+            TransformStack::getInstance().pop();
 
-            //////////////// Wiimote /////////////////
+            ////////////////////// Ball /////////////////////////
+            
+            glm::mat4 world_ball = 
+                    glm::translate(
+                        glm::mat4(1.0f), 
+                        glm::vec3(0.0f, 0.0f, ball_r)
+                        );
+            
+            TransformStack::getInstance().push(world_ball);
+
+            glm::mat4 mvp2 = TransformStack::getInstance().computeTransform();
+            glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp2[0][0]);
+
+            ball.draw();
+            TransformStack::getInstance().pop();
+
+            //////////////////// Tool ///////////////////////
 
             TransformStack::getInstance().push(world_wiimote);
 
-            glm::mat4 mvp2 = TransformStack::getInstance().computeTransform();
-
-            glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp2[0][0]);
+            glm::mat4 mvp3 = TransformStack::getInstance().computeTransform();
+            glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &mvp3[0][0]);
 
             tool.draw();
+            TransformStack::getInstance().pop();
+
+            glm::vec3 bounds = glm::vec3(tool_x, tool_y, tool_z);
+            if (hitPaddle(world_wiimote, bounds, world_ball, ball_r)) {
+                cwiid_command(wiimote, CWIID_CMD_RUMBLE, 254);
+            } else {
+                cwiid_command(wiimote, CWIID_CMD_RUMBLE, 0);
+            }
             
+
+            /////////////// End Loop ///////////////////
 
             // Clear stack
             TransformStack::getInstance().clear();

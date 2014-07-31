@@ -71,15 +71,16 @@ namespace simple_shape {
 
         float d_x = x / 2;
         float d_y = y / 2;
+        float d_z = z / 2;
 
-        model_vertices.push_back(glm::vec3(d_x, d_y, 0.0f));
-        model_vertices.push_back(glm::vec3(d_x, -d_y, 0.0f));
-        model_vertices.push_back(glm::vec3(-d_x, -d_y, 0.0f));
-        model_vertices.push_back(glm::vec3(-d_x, d_y, 0.0f));
-        model_vertices.push_back(glm::vec3(d_x, d_y, z));
-        model_vertices.push_back(glm::vec3(d_x, -d_y, z));
-        model_vertices.push_back(glm::vec3(-d_x, -d_y, z));
-        model_vertices.push_back(glm::vec3(-d_x, d_y, z));
+        model_vertices.push_back(glm::vec3(d_x, d_y, -d_z));
+        model_vertices.push_back(glm::vec3(d_x, -d_y, -d_z));
+        model_vertices.push_back(glm::vec3(-d_x, -d_y, -d_z));
+        model_vertices.push_back(glm::vec3(-d_x, d_y, -d_z));
+        model_vertices.push_back(glm::vec3(d_x, d_y, d_z));
+        model_vertices.push_back(glm::vec3(d_x, -d_y, d_z));
+        model_vertices.push_back(glm::vec3(-d_x, -d_y, d_z));
+        model_vertices.push_back(glm::vec3(-d_x, d_y, d_z));
 
         vertex_buffer_data.push_back(model_vertices[0]); // 1
         vertex_buffer_data.push_back(model_vertices[1]);
@@ -119,7 +120,7 @@ namespace simple_shape {
         vertex_buffer_data.push_back(model_vertices[5]);
 
         for (int i = 0; i < vertex_buffer_data.size(); i++) {
-            glm::vec3 v = vertex_buffer_data[i] + glm::vec3(d_x, d_y, 0.0f);
+            glm::vec3 v = vertex_buffer_data[i] + glm::vec3(d_x, d_y, d_z);
             color_buffer_data.push_back(glm::normalize(v));
         }
 
