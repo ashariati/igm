@@ -26,6 +26,7 @@
 #include <oculus/simple_shape.h>
 #include <oculus/transform_stack.h>
 #include <oculus/contact_model.h>
+#include <oculus/ball_model.h>
 
 #include <vicon_msgs/Names.h>
 #include <vicon_msgs/Values.h>
