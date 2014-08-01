@@ -33,14 +33,14 @@
 
 // Shape Dimensions
 float room_x = 5000.0f;
-float room_y = 5000.0f;
-float room_z = 5000.0f;
+float room_y = 2500.0f;
+float room_z = 2500.0f;
 
 float tool_x = 350.0f;
-float tool_y = 50.0f;
-float tool_z = 200.0f;
+float tool_y = 100.0f;
+float tool_z = 250.0f;
 
-float ball_r = 500.0f;
+float ball_r = 100.0f;
 
 float floor_x = 50000.0f;
 float floor_y = 50000.0f;
@@ -48,6 +48,7 @@ int floor_res = 50;
 
 // Wiimote
 cwiid_wiimote_t *wiimote;
+struct cwiid_state state;
 
 // Oculus
 ovrHmd hmd;
@@ -463,7 +464,7 @@ int main(int argc, char** argv) {
     world_model = glm::mat4(1.0f);
 
     world_ball = 
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 600.0f, ball_r));
+        glm::translate(glm::mat4(1.0f), glm::vec3(600.0f, 500.0f, 1000.0f));
 
     ////////////////// Subscribers ////////////////////////
 
@@ -471,8 +472,11 @@ int main(int argc, char** argv) {
 
     /////////////////// Dynamics Setup //////////////////
     
-    bool wasHit = false;
     double lastTime = glfwGetTime();
+
+    BallModel ball_model = BallModel(world_ball, ball_r);
+    ball_model.setPaddleDim(tool_x, tool_y, tool_z);
+    ball_model.setRoomDim(room_x, room_y, room_z);
 
     /////////////////////////////////////////////////////
 
@@ -611,22 +615,17 @@ int main(int argc, char** argv) {
             double currentTime = glfwGetTime();
             float deltaTime = (float)(currentTime - lastTime);
 
-            glm::vec3 bounds = glm::vec3(tool_x, tool_y, tool_z);
-            if (hitPaddle(world_wiimote, bounds, world_ball, ball_r)) {
-                cwiid_command(wiimote, CWIID_CMD_RUMBLE, 254);
-                wasHit = true;
+            cwiid_get_state(wiimote, &state);
+            int btn = (int)(state.buttons);
+            if (btn == 4)
+                ball_model.reset();
 
-            } else {
+            if (ball_model.inContact(world_wiimote))
+                cwiid_command(wiimote, CWIID_CMD_RUMBLE, 1023);
+            else
                 cwiid_command(wiimote, CWIID_CMD_RUMBLE, 0);
-            }
 
-            if (wasHit) {
-                glm::vec3 b_pos = glm::vec3(world_ball[3]);
-                world_ball = glm::translate(
-                        glm::mat4(1.0f),
-                        glm::vec3(-1.0f*deltaTime, 0.0f, 0.0f) + b_pos
-                        );
-            }
+            world_ball = ball_model.update(world_wiimote, deltaTime);
             
 
             /////////////// End Loop ///////////////////

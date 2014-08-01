@@ -4,6 +4,11 @@
 #include <glm/glm.hpp>
 #include <iostream>
 
+inline std::ostream& operator << (std::ostream& os, const glm::vec3 &v) {
+
+    os << v[0] << " " << v[1] <<  " " << v[2];
+
+}
 
 inline std::ostream& operator << (std::ostream& os, const glm::mat4 &M) {
     // glm::mat4 is column major... M[col][row]

@@ -2,9 +2,15 @@
 
 BallModel::BallModel(glm::mat4 p, float r) {
 
+    pose_initial = p;
     pose = p;
+
+    vel_initial = glm::vec3(0.0f, 0.0f, 0.0f);
     vel = glm::vec3(0.0f, 0.0f, 0.0f);
+
     radius = r;
+    wasHit = false;
+    v_initial = 1.0f;
 
     setPaddleDim(0.0f, 0.0f, 0.0f);
     setRoomDim(0.0f, 0.0f, 0.0f);
@@ -13,7 +19,25 @@ BallModel::BallModel(glm::mat4 p, float r) {
 
 glm::mat4 BallModel::update(glm::mat4 paddle, float deltaTime) {
 
-    vel = velocityFromPaddle(paddle) + velocityFromWall();
+    glm::vec3 v_p = velocityFromPaddle(paddle);
+    glm::vec3 v_w = velocityFromWall();
+    
+    bool pNotZero = 
+        glm::any(
+                glm::greaterThan(v_p, glm::vec3(0.0f)) + 
+                glm::lessThan(v_p, glm::vec3(0.0f))
+                );
+
+    bool wNotZero =
+        glm::any(
+                glm::greaterThan(v_w, glm::vec3(0.0f)) + 
+                glm::lessThan(v_w, glm::vec3(0.0f))
+                );
+
+    if (pNotZero)
+        vel = v_p;
+    else if (wNotZero) 
+        vel = v_w;
 
     pose = glm::translate(
             glm::mat4(1.0f),
@@ -21,7 +45,7 @@ glm::mat4 BallModel::update(glm::mat4 paddle, float deltaTime) {
                 vel[0] * deltaTime,
                 vel[1] * deltaTime,
                 vel[2] * deltaTime
-                )
+                ) + glm::vec3(pose[3])
             );
 
     return pose;
@@ -37,21 +61,41 @@ float BallModel::distanceToPlane(glm::vec3 n, glm::vec3 p, glm::vec3 x) {
 }
 
 glm::vec3 BallModel::velocityFromPaddle(glm::mat4 paddle) {
+
     glm::vec4 center = glm::vec4(pose[3]);
     glm::vec3 r = glm::vec3(glm::inverse(paddle) * center);
 
     bool inBounds_x = (paddle_x / 2) + radius > abs(r[0]);
-    bool inBounds_y = (paddle_y / 2) > abs(r[1]);
+    bool inBounds_y = radius > abs(r[1]);
     bool inBounds_z = (paddle_z / 2) + radius > abs(r[2]);
 
     bool inBounds = inBounds_x && inBounds_y && inBounds_z;
 
     if (inBounds) {
+
         float D = distanceToPlane(paddle_n, glm::vec3(0.0f), r);
-        if (D > 0.0f)
-            return glm::reflect(vel, paddle_n);
-        else
-            return glm::reflect(vel, -paddle_n);
+
+        glm::quat R = glm::quat_cast(paddle);
+        glm::vec3 n =  R * paddle_n;
+
+        if (wasHit) {
+
+            if (D > 0.0f)
+                return glm::reflect(vel, n);
+            else
+                return glm::reflect(vel, -n);
+
+        } else {
+
+            if (D > 0.0f)
+                return n * v_initial;
+            else
+                return -n * v_initial;
+
+        }
+
+
+        wasHit = true;
 
     } else {
         return glm::vec3(0.0f);
@@ -148,5 +192,13 @@ void BallModel::setRoomDim(float x, float y, float z) {
     room_right_p = glm::vec3(0.0f, -y/2, z/2);
     room_top_p = glm::vec3(0.0f, 0.0f, z);
     room_bottom_p = glm::vec3(0.0f, 0.0f, 0.0f);
+
+}
+
+void BallModel::reset() {
+
+    pose = pose_initial;
+    vel = vel_initial;
+    wasHit = false;
 
 }

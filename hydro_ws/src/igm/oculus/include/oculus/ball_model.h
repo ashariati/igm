@@ -4,6 +4,10 @@
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include <oculus/print.h>
+#include <iostream>
 
 class BallModel {
     public:
@@ -16,7 +20,10 @@ class BallModel {
         void setPaddleDim(float x, float y, float z);
         void setRoomDim(float x, float y, float z);
 
+        void reset();
+
     private:
+
 
         // Private Methods
         float distanceToPlane(glm::vec3 n, glm::vec3 p, glm::vec3 x);
@@ -24,9 +31,14 @@ class BallModel {
         glm::vec3 velocityFromWall();
 
         // Private Members
+        bool wasHit;
+        float v_initial;
+        glm::mat4 pose_initial;
+        glm::vec3 vel_initial;
+
+        float radius;
         glm::mat4 pose;
         glm::vec3 vel;
-        float radius;
 
         float paddle_x;
         float paddle_y;
@@ -47,8 +59,6 @@ class BallModel {
         glm::vec3 room_right_p;
         glm::vec3 room_top_p;
         glm::vec3 room_bottom_p;
-
-
 
 };
 
