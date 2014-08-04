@@ -49,6 +49,7 @@ int floor_res = 50;
 // Wiimote
 cwiid_wiimote_t *wiimote;
 struct cwiid_state state;
+int actuationTime;
 
 // Oculus
 ovrHmd hmd;
@@ -615,15 +616,22 @@ int main(int argc, char** argv) {
             double currentTime = glfwGetTime();
             float deltaTime = (float)(currentTime - lastTime);
 
+            // Check if the reset button has been hit
             cwiid_get_state(wiimote, &state);
             int btn = (int)(state.buttons);
             if (btn == 4)
                 ball_model.reset();
 
             if (ball_model.inContact(world_wiimote))
+                actuationTime = 0;
+
+
+            if (actuationTime < 20) {
                 cwiid_command(wiimote, CWIID_CMD_RUMBLE, 1023);
-            else
+                actuationTime++;
+            } else {
                 cwiid_command(wiimote, CWIID_CMD_RUMBLE, 0);
+            }
 
             world_ball = ball_model.update(world_wiimote, deltaTime);
             
